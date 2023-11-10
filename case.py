@@ -29,6 +29,11 @@ class MeshCoefficient3D(Enum):
 
 class CaseManager:
     def __init__(self, mesh: MeshManager):
+        self.initial_u = None
+        self.n_x_cell = mesh.n_x_cell
+        self.n_y_cell = mesh.n_y_cell
+        self.n_z_cell = mesh.n_z_cell
+        self.dim = mesh.dim
         self.t_coefficient = None
         self.mesh_coefficient = None
         self.n_coefficient = None
@@ -41,18 +46,23 @@ class CaseManager:
 
     # 创建温度场和速度场数据
     def create_mesh_data(self):
-        self.t = np.zeros((self.mesh.n_x_cell, self.mesh.n_y_cell, self.mesh.n_z_cell), dtype=Fp)
-        self.old_t = np.zeros((self.mesh.n_x_cell, self.mesh.n_y_cell, self.mesh.n_z_cell), dtype=Fp)
-        self.u = np.zeros((self.mesh.n_x_cell, self.mesh.n_y_cell, self.mesh.n_z_cell), dtype=Fp)
-        self.v = np.zeros((self.mesh.n_x_cell, self.mesh.n_y_cell, self.mesh.n_z_cell), dtype=Fp)
-        self.w = np.zeros((self.mesh.n_x_cell, self.mesh.n_y_cell, self.mesh.n_z_cell), dtype=Fp)
+        self.t = np.zeros((self.n_x_cell, self.n_y_cell, self.n_z_cell), dtype=Fp)
+        self.old_t = np.zeros((self.n_x_cell, self.n_y_cell, self.n_z_cell), dtype=Fp)
+        self.u = np.zeros((self.n_x_cell, self.n_y_cell, self.n_z_cell), dtype=Fp)
+        self.v = np.zeros((self.n_x_cell, self.n_y_cell, self.n_z_cell), dtype=Fp)
+        self.w = np.zeros((self.n_x_cell, self.n_y_cell, self.n_z_cell), dtype=Fp)
 
     # 设置温度
     def set_temperature(self, temperature):
-        self.t = temperature * np.ones((self.mesh.n_x_cell, self.mesh.n_y_cell, self.mesh.n_z_cell), dtype=Fp)
+        self.t = temperature * np.ones((self.n_x_cell, self.n_y_cell, self.n_z_cell), dtype=Fp)
 
     # 创建方程的系数
     def create_mesh_coefficient(self):
-        self.mesh_coefficient = MeshCoefficient2D if self.mesh.dim == 2 else MeshCoefficient3D
+        self.mesh_coefficient = MeshCoefficient2D if self.dim == 2 else MeshCoefficient3D
         self.t_coefficient = np.zeros(
-            (self.mesh.n_x_cell, self.mesh.n_y_cell, self.mesh.n_z_cell, self.mesh_coefficient.count.value), dtype=Fp)
+            (self.n_x_cell, self.n_y_cell, self.n_z_cell, self.mesh_coefficient.count.value), dtype=Fp)
+
+    def set_u(self,u):
+        self.initial_u = u
+        self.u = u * np.ones((self.n_x_cell, self.n_y_cell, self.n_z_cell), dtype=Fp)
+

@@ -3,7 +3,7 @@ from mesh import MeshManager
 from fluid import Fluid
 from fp import Fp
 from boundary import FluidBoundaryCondition
-from solve import SolveManager
+from solve import SolveManager,ConvectionScheme
 from post_process import PostProcessManager
 from collocated_segregated import CollocatedSegregated
 from read_setting import ReadSetting
@@ -54,10 +54,13 @@ if __name__ == '__main__':
     dat_filename = readSetting.dat_filename
     is_test = readSetting.is_test
     is_show_figure = readSetting.is_show_figure
+    u = readSetting.u
 
     if not is_test:
         # 网格划分
         meshManager = MeshManager(dim, x_cell, y_cell, z_cell)
+        coordinate_limit_count[0] = Fp(-0.5/(x_cell-1))
+        coordinate_limit_count[1] = Fp(1.0+0.5/(x_cell-1))
         meshManager.create_coordinates(coordinate_limit_count)
 
         # 存储数据
@@ -65,6 +68,7 @@ if __name__ == '__main__':
         caseManager.create_mesh_data()
         caseManager.set_temperature(init_temperature)
         caseManager.create_mesh_coefficient()
+        caseManager.set_u(u)
 
         # 定义流体
         fluid = Fluid(meshManager)
@@ -76,11 +80,23 @@ if __name__ == '__main__':
         fluidBoundary = FluidBoundaryCondition(dim=dim)
         fluidBoundary.create_face_boundary(meshManager)
         fluidBoundary.create_boundary(dim, x_min_type, x_max_type, y_min_type, y_max_type)
-        fluidBoundary.create_boundary_temperature(dim,
-                                                  x_min_temperature_type,  Fp(x_min_temperature_value),
-                                                  x_max_temperature_type,  Fp(x_max_temperature_value),
-                                                  y_min_temperature_value, Fp(y_min_temperature_value),
-                                                  y_max_temperature_value, Fp(y_max_temperature_value))
+        # fluidBoundary.create_boundary_temperature(dim,
+        #                                           x_min_temperature_type,  Fp(x_min_temperature_value),
+        #                                           x_max_temperature_type,  Fp(x_max_temperature_value),
+        #                                           y_min_temperature_value, Fp(y_min_temperature_value),
+        #                                           y_max_temperature_value, Fp(y_max_temperature_value))
+        if y_cell == 1:
+            fluidBoundary.create_boundary_temperature(dim,
+                                                  'constant', Fp(0.0),  # xmin
+                                                  'constant', Fp(500.0),  # xmax
+                                                  'heat_flux', Fp(0.0),  # ymin
+                                                  'heat_flux', Fp(0.0))  # ymax
+        elif x_cell == 1:
+            fluidBoundary.create_boundary_temperature(dim,
+                                                 'heat_flux', Fp(0.0),  # xmin
+                                                 'heat_flux', Fp(0.0),  # xmax
+                                                 'constant', Fp(0.0),  # ymin
+                                                 'constant', Fp(1.0))  # ymax
         # 求解
         solveManager = SolveManager()
         solveManager.set_iter_step_count(iter_step_count)
@@ -88,6 +104,7 @@ if __name__ == '__main__':
         solveManager.set_relax_factor(relax_factor)
         solveManager.set_solve_equation_tolerance(solve_equation_tolerance)
         solveManager.set_residual_error(residual_error)
+        solveManager.set_convection_scheme(ConvectionScheme.cd)
 
         # 后处理
         postProcessManager = PostProcessManager(output_folder)
@@ -107,39 +124,4 @@ if __name__ == '__main__':
                                                     boundary=fluidBoundary, post=postProcessManager, fluid=fluid,drawer=drawer)
         collocatedSegregated.circulate()
 
-    else:
-        import numpy as np
-        import matplotlib.pyplot as plt
-        import time
-        import math
 
-        fig = plt.figure()
-        ax = fig.add_subplot(1, 1, 1)
-
-        ax.set_xlabel('Time')
-        ax.set_ylabel('cos(t)')
-        ax.set_title('')
-
-        line = None
-        plt.grid(True)  # 添加网格
-        plt.ion()  # interactive mode on
-        obsX = []
-        obsY = []
-
-        t0 = time.time()
-
-        while True:
-            t = time.time() - t0
-            obsX.append(t)
-            obsY.append(math.cos(2 * math.pi * 1 * t))
-
-            if line is None:
-                line = ax.plot(obsX, obsY, '-g', marker='*')[0]
-
-            line.set_xdata(obsX)
-            line.set_ydata(obsY)
-
-            ax.set_xlim([t - 10, t + 1])
-            ax.set_ylim([-1, 1])
-
-            plt.pause(0.01)

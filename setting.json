@@ -27,7 +27,7 @@
   "z_min_temperature_value": 1000,
   "z_max_temperature_type": "constant",
   "z_max_temperature_value": 1000,
-  "iter_step_count": 1000,
+  "iter_step_count": 200,
   "solve_equation_step_count": 20,
   "relax_factor": 0.8,
   "solve_equation_tolerance": 0.01,
@@ -40,5 +40,6 @@
   "vtk_data_filename" : "data.vtk",
   "dat_filename" : "temperature_line.dat",
   "is_test": false,
-  "is_show_figure": true
+  "is_show_figure": true,
+  "u": 1.0
 }

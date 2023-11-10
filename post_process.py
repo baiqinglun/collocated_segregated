@@ -2,6 +2,9 @@ from mesh import MeshManager
 from case import CaseManager
 import numpy as np
 from fp import Fp
+from fluid import Fluid
+import solve
+import math
 
 class PostProcessManager:
     def __init__(self,output_folder):
@@ -105,3 +108,40 @@ class PostProcessManager:
         with open(f"{self.output_folder}/{self.nonlinear_equation_residual_filename}", 'w') as nonlinear_equation_residual_id:
             nonlinear_equation_residual_id.write("#it, walltime, l2_t/l2_max_t\n")
             nonlinear_equation_residual_id.close()
+
+    def write_temperature_Pe_L_center(self, mesh:MeshManager,case:CaseManager,solveManager:solve.SolveManager, fluid:Fluid):
+        # Build the local data for np array
+        out_file = None
+        nx = mesh.n_x_cell
+        t = case.t
+
+        specific_heat_capacity = fluid.specific_heat_capacity
+        if abs(specific_heat_capacity) > 10000:
+            Pe_L = Fp(0.0)
+        else:
+            Pe_L = case.initial_u / specific_heat_capacity
+
+        print("Check Pe_L ", Pe_L)
+
+        # 0: Upwind; 1: CD; 2: Power-law; 3: SOU (to be implemented);
+        conv_scheme = solveManager.convection_scheme
+
+        print("Check conv_scheme ", conv_scheme)
+
+        if conv_scheme == solve.ConvectionScheme.upwind:
+            out_file = 'center_temp_x_upwind.dat'
+        elif conv_scheme == solve.ConvectionScheme.cd:
+            out_file = 'center_temp_x_center.dat'
+
+        # Open temperature output files
+        with open(out_file, 'a') as file3:
+            # Write temperature data at center point
+            i = int(nx / 2) - 1
+            j = 0
+            k = 0
+            if abs(Pe_L) < Fp(1.e-3):
+                file3.write(f"{Pe_L} {t[i, j, k]} {0.5}\n")
+            else:
+                xtemp = 0.5
+                result = (math.exp(Pe_L * xtemp) - 1) / (math.exp(Pe_L) - 1)
+                file3.write(f"{Pe_L} {t[i, j, k]} {result}\n")

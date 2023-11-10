@@ -27,7 +27,7 @@ def calculate_face_coefficient(area,dx,ul,ur,mul,mur,rho,sign_f):
     d = Fp(2.0) * mul * mur / (mul + mur + Fp(1.e-12)) / dx  # 调和平均法计算界面扩散系数 / dx
 
     # Upwind
-    # a = area * (d + max(fp(0.0),sign_f * f)) # 在无速度时，S * condution_coeff / dx
+    # a = area * (d + max(Fp(0.0),sign_f * f)) # 在无速度时，S * condution_coeff / dx
 
     # Central
     a = area * d

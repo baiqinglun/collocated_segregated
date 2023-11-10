@@ -46,3 +46,4 @@ class ReadSetting:
             self.dat_filename = settings_data["dat_filename"]
             self.is_test = settings_data["is_test"]
             self.is_show_figure = settings_data["is_show_figure"]
+            self.u = settings_data["u"]

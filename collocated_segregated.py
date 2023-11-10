@@ -55,6 +55,7 @@ class CollocatedSegregated:
         self.physics_boundary_condition = boundary.physics_boundary_condition
         self.temperature_boundary_condition = boundary.temperature_boundary_condition
 
+        self.fluid = fluid
         self.density = fluid.density
         self.mu = fluid.mu
         self.conductivity_coefficient = fluid.conductivity_coefficient
@@ -134,5 +135,6 @@ class CollocatedSegregated:
                         "{}  {} {}\n".format(current_iter, time.perf_counter() - self.post.start_time, self.solve.l2_t / self.solve.l2_max_t))
             if self.drawer:
                 self.drawer.draw(time.perf_counter() - self.post.start_time,[self.solve.l2_t / self.solve.l2_max_t])
+        self.post.write_temperature_Pe_L_center(self.mesh,self.case,self.solve,self.fluid)
         self.post.end_time = time.perf_counter()
         print("Total time",self.post.end_time - self.post.start_time)

@@ -7,6 +7,12 @@ class EquationType(Enum):
     flow = 1
     conduction_flow = 2
 
+class ConvectionScheme(Enum):
+    upwind = 0
+    cd = 1
+    power_law = 2
+    sou = 3
+
 class SolveManager:
     def __init__(self):
         '''
@@ -27,6 +33,8 @@ class SolveManager:
         self.relax_factor = Fp(0.75)
         self.residual_error = Fp(2.-6)
         self.solve_equation_total_count = 0
+
+        self.convection_scheme = ConvectionScheme.upwind
 
         # 二阶范数
         self.l2_curr = Fp(0.0)
@@ -58,6 +66,9 @@ class SolveManager:
     def set_solve_equation_count(self, solve_equation_count):
         self.solve_equation_count = solve_equation_count
 
+    def set_convection_scheme(self,convection_scheme):
+        self.convection_scheme = convection_scheme
+
     def iter_step_count(self):
         return self.iter_step_count
 
@@ -81,6 +92,9 @@ class SolveManager:
 
     def solve_equation_count(self,):
         return self.solve_equation_count
+
+    def convection_scheme(self):
+        return self.convection_scheme
 
     def solve(self,postProcessManager:PostProcessManager):
         for iter_step in range(1,self.iter_step_count+1):
