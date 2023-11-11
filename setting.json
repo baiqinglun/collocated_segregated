@@ -1,7 +1,7 @@
 {
   "dim": 2,
   "x_cell": 20,
-  "y_cell": 20,
+  "y_cell": 1,
   "z_cell": 1,
   "coordinate_limit_count":[0, 10, 0, 10, 0, 1],
   "init_temperature": 273,
@@ -27,7 +27,7 @@
   "z_min_temperature_value": 1000,
   "z_max_temperature_type": "constant",
   "z_max_temperature_value": 1000,
-  "iter_step_count": 200,
+  "iter_step_count": 20,
   "solve_equation_step_count": 20,
   "relax_factor": 0.8,
   "solve_equation_tolerance": 0.01,

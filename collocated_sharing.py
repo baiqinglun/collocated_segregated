@@ -1,9 +1,6 @@
-import numpy as np
 from fp import Fp
-from mesh import MeshManager
 from tool import calculate_area_volume, calculate_face_coefficient
 from boundary import FluidBoundaryCondition, PhysicsBoundaryCondition, TemperatureBoundaryCondition
-from typing import List
 from case import CaseManager, MeshCoefficient2D, MeshCoefficient3D
 from boundary_id import PhysicsBoundaryID,TemperatureBoundaryID,BoundaryLimitID
 

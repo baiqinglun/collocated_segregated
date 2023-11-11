@@ -64,12 +64,14 @@ if __name__ == '__main__':
         meshManager.create_coordinates(coordinate_limit_count)
 
         # 存储数据
+        u = Fp(1.0)
         caseManager = CaseManager(meshManager)
         caseManager.create_mesh_data()
         caseManager.set_temperature(init_temperature)
         caseManager.create_mesh_coefficient()
         caseManager.set_u(u)
 
+        conductivity_coefficient = 10000
         # 定义流体
         fluid = Fluid(meshManager)
         fluid.set_density(Fp(density))

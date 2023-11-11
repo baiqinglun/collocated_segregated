@@ -1,6 +1,5 @@
 from fp import Fp
 from enum import Enum
-from post_process import PostProcessManager
 
 class EquationType(Enum):
     conduction = 0
@@ -95,13 +94,3 @@ class SolveManager:
 
     def convection_scheme(self):
         return self.convection_scheme
-
-    def solve(self,postProcessManager:PostProcessManager):
-        for iter_step in range(1,self.iter_step_count+1):
-            if iter_step == 1 or iter_step % postProcessManager.save_residual_frequency == 0 or iter_step == self.iter_step_count:
-                print('')
-                print('---------------------------')
-                print('Begin iter = ', iter_step)
-                print('---------------------------')
-
-        # self.is_finish() =

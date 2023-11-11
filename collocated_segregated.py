@@ -38,6 +38,7 @@ class CollocatedSegregated:
         self.w = case.w
         self.t_coefficient = case.t_coefficient
         self.mesh_coefficient = case.mesh_coefficient
+        self.initial_u = case.initial_u
 
         self.solve = solve
         self.iter_step_count = solve.iter_step_count
@@ -49,6 +50,7 @@ class CollocatedSegregated:
         self.residual_error = solve.residual_error
         self.solve_equation_count = solve.solve_equation_count
         self.is_finish = solve.is_finish
+        self.convection_scheme = solve.convection_scheme
 
         self.face_boundary = boundary.face_boundary
         self.face_id = boundary.face_id
@@ -135,6 +137,6 @@ class CollocatedSegregated:
                         "{}  {} {}\n".format(current_iter, time.perf_counter() - self.post.start_time, self.solve.l2_t / self.solve.l2_max_t))
             if self.drawer:
                 self.drawer.draw(time.perf_counter() - self.post.start_time,[self.solve.l2_t / self.solve.l2_max_t])
-        self.post.write_temperature_Pe_L_center(self.mesh,self.case,self.solve,self.fluid)
+        self.post.write_temperature_Pe_L_center(self.n_x_cell,self.t,self.initial_u,self.convection_scheme,self.conductivity_coefficient)
         self.post.end_time = time.perf_counter()
         print("Total time",self.post.end_time - self.post.start_time)
