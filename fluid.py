@@ -2,6 +2,17 @@ from mesh import MeshManager
 import numpy as np
 from fp import Fp
 
+"""
+@name：Fluid
+@description: 定义流体的相关信息
+@variable:
+    density:密度
+    mu:粘度
+    conductivity_coefficient：热传导系数
+    specific_heat_capacity：比热
+@function: 
+    set_physical_property()：设置流体信息
+"""
 class Fluid:
     def __init__(self,mesh:MeshManager):
         self.n_x_cell = mesh.n_x_cell

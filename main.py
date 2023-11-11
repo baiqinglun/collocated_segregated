@@ -3,11 +3,12 @@ from mesh import MeshManager
 from fluid import Fluid
 from fp import Fp
 from boundary import FluidBoundaryCondition
-from solve import SolveManager,ConvectionScheme
+from solve import SolveManager,ConvectionScheme,EquationType
 from post_process import PostProcessManager
 from collocated_segregated import CollocatedSegregated
 from read_setting import ReadSetting
 from draw import DrawCurves
+import time
 
 if __name__ == '__main__':
     # 读取配置文件
@@ -59,19 +60,15 @@ if __name__ == '__main__':
     if not is_test:
         # 网格划分
         meshManager = MeshManager(dim, x_cell, y_cell, z_cell)
-        coordinate_limit_count[0] = Fp(-0.5/(x_cell-1))
-        coordinate_limit_count[1] = Fp(1.0+0.5/(x_cell-1))
         meshManager.create_coordinates(coordinate_limit_count)
 
         # 存储数据
-        u = Fp(1.0)
         caseManager = CaseManager(meshManager)
         caseManager.create_mesh_data()
         caseManager.set_temperature(init_temperature)
         caseManager.create_mesh_coefficient()
         caseManager.set_u(u)
 
-        conductivity_coefficient = 10000
         # 定义流体
         fluid = Fluid(meshManager)
         fluid.set_density(Fp(density))
@@ -82,31 +79,37 @@ if __name__ == '__main__':
         fluidBoundary = FluidBoundaryCondition(dim=dim)
         fluidBoundary.create_face_boundary(meshManager)
         fluidBoundary.create_boundary(dim, x_min_type, x_max_type, y_min_type, y_max_type)
-        # fluidBoundary.create_boundary_temperature(dim,
-        #                                           x_min_temperature_type,  Fp(x_min_temperature_value),
-        #                                           x_max_temperature_type,  Fp(x_max_temperature_value),
-        #                                           y_min_temperature_value, Fp(y_min_temperature_value),
-        #                                           y_max_temperature_value, Fp(y_max_temperature_value))
-        if y_cell == 1:
-            fluidBoundary.create_boundary_temperature(dim,
-                                                  'constant', Fp(0.0),  # xmin
-                                                  'constant', Fp(500.0),  # xmax
-                                                  'heat_flux', Fp(0.0),  # ymin
-                                                  'heat_flux', Fp(0.0))  # ymax
-        elif x_cell == 1:
-            fluidBoundary.create_boundary_temperature(dim,
-                                                 'heat_flux', Fp(0.0),  # xmin
-                                                 'heat_flux', Fp(0.0),  # xmax
-                                                 'constant', Fp(0.0),  # ymin
-                                                 'constant', Fp(1.0))  # ymax
+
         # 求解
         solveManager = SolveManager()
         solveManager.set_iter_step_count(iter_step_count)
         solveManager.set_solve_equation_step_count(solve_equation_step_count)
-        solveManager.set_relax_factor(relax_factor)
+        solveManager.set_relax_factor(Fp(relax_factor))
         solveManager.set_solve_equation_tolerance(solve_equation_tolerance)
         solveManager.set_residual_error(residual_error)
         solveManager.set_convection_scheme(ConvectionScheme.cd)
+        solveManager.set_conduction_scheme(ConvectionScheme.cd)
+        solveManager.set_equation_type(EquationType.conduction)
+
+        if solveManager.equation_type == EquationType.conduction:
+            fluidBoundary.create_boundary_temperature(dim,
+                                                      x_min_temperature_type,  Fp(x_min_temperature_value),
+                                                      x_max_temperature_type,  Fp(x_max_temperature_value),
+                                                      y_min_temperature_value, Fp(y_min_temperature_value),
+                                                      y_max_temperature_value, Fp(y_max_temperature_value))
+        elif solveManager.equation_type == EquationType.conduction_flow:
+            if y_cell == 1:
+                fluidBoundary.create_boundary_temperature(dim,
+                                                      'constant', Fp(0.0),  # xmin
+                                                      'constant', Fp(1.0),  # xmax
+                                                      'heat_flux', Fp(0.0),  # ymin
+                                                      'heat_flux', Fp(0.0))  # ymax
+            elif x_cell == 1:
+                fluidBoundary.create_boundary_temperature(dim,
+                                                     'heat_flux', Fp(0.0),  # xmin
+                                                     'heat_flux', Fp(0.0),  # xmax
+                                                     'constant', Fp(0.0),  # ymin
+                                                     'constant', Fp(1.0))  # ymax
 
         # 后处理
         postProcessManager = PostProcessManager(output_folder)
@@ -125,5 +128,3 @@ if __name__ == '__main__':
         collocatedSegregated = CollocatedSegregated(case=caseManager, mesh=meshManager, solve=solveManager,
                                                     boundary=fluidBoundary, post=postProcessManager, fluid=fluid,drawer=drawer)
         collocatedSegregated.circulate()
-
-

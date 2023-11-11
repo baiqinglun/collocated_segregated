@@ -1,6 +1,5 @@
 from fp import Fp
 import numpy as np
-from enum import Enum
 from mesh import MeshManager
 from boundary_id import FaceId2D, FaceId3D, PhysicsBoundaryID, TemperatureBoundaryID, BoundaryLimitID
 
@@ -17,6 +16,18 @@ class TemperatureBoundaryCondition:
         self.heat_flux = Fp(0.0)
 
 
+"""
+@name: FluidBoundaryCondition
+@description: 定义流体的边界条件
+@variable:
+    face_boundary:每个网格的面
+    physics_boundary_condition:[]：物理边界条件
+    temperature_boundary_condition:[]：温度边界条件
+@function: 
+    create_face_boundary()：创建边界
+    create_boundary()：创建物理边界
+    create_boundary_temperature()：创建温度边界
+"""
 class FluidBoundaryCondition:
     def __init__(self, dim):
         self.face_boundary = None  # 存储网格的每个面的边界，判断是边界还是内部
@@ -27,13 +38,6 @@ class FluidBoundaryCondition:
         for _ in range(BoundaryLimitID.count.value):
             self.physics_boundary_condition.append(PhysicsBoundaryCondition())
             self.temperature_boundary_condition.append(TemperatureBoundaryCondition())
-
-        self.temperature_east = Fp(0.0)
-        self.temperature_west = Fp(0.0)
-        self.temperature_north = Fp(0.0)
-        self.temperature_south = Fp(0.0)
-        self.temperature_top = Fp(0.0)
-        self.temperature_bottom = Fp(0.0)
 
     def create_face_boundary(self, mesh: MeshManager):
         dim = mesh.dim
@@ -119,7 +123,6 @@ class FluidBoundaryCondition:
         self.temperature_boundary_condition[index].t = Fp(0.0)
         self.temperature_boundary_condition[index].heat_flux = Fp(0.0)
         self.temperature_boundary_condition[index].type = PhysicsBoundaryID.none
-
         self.set_temperature_boundary_condition(BoundaryLimitID.x_min.value, input_temp_type_xmin, input_xmin_value)
         self.set_temperature_boundary_condition(BoundaryLimitID.x_max.value, input_temp_type_xmax, input_xmax_value)
         self.set_temperature_boundary_condition(BoundaryLimitID.y_min.value, input_temp_type_ymin, input_ymin_value)
@@ -133,5 +136,5 @@ class FluidBoundaryCondition:
             self.temperature_boundary_condition[index].type = TemperatureBoundaryID.constant
             self.temperature_boundary_condition[index].t = value
         elif buff == 'heat_flux':
-            self.temperature_boundary_condition[index].type = TemperatureBoundaryID.constant
+            self.temperature_boundary_condition[index].type = TemperatureBoundaryID.heat_flux
             self.temperature_boundary_condition[index].heat_flux = value

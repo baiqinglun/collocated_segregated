@@ -2,7 +2,18 @@ import json
 import numpy as np
 from fp import Fp
 
-
+"""
+@name：MeshManager
+@description: 定义网格的相关信息
+@variable:
+    x_cell_centroid[]：存储知心坐标
+    coordinate_range[]：坐标轴范围
+    dx：单元x轴向大小
+    n_x_cell：x轴向单元个数
+    n_x_point：x轴向坐标点个数
+@function: 
+    create_coordinates()：创建坐标轴
+"""
 class MeshManager:
     def __init__(self, dim, n_x_cell, n_y_cell, n_z_cell=1):
         self.z_cell_centroid = None

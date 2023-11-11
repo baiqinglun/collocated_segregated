@@ -1,6 +1,15 @@
 import matplotlib.pyplot as plt
-import numpy as np
 
+"""
+@name: DrawCurves
+@description: 绘制残差曲线图
+@variable:
+    ax:轴
+    time:[]
+    residuals:[[]]
+@function: 
+    draw()：绘图
+"""
 class DrawCurves:
     def __init__(self):
         self.fig = plt.figure()
@@ -20,7 +29,4 @@ class DrawCurves:
             self.residuals[index].append(y)
         for index,residual in enumerate(self.residuals):
             line = self.ax.plot(self.time, residual, '-g', marker='*')[0]
-        # line = self.ax.plot(self.time,self.y,'-g',marker='*')[0]
-        # line.set_xdata(self.time)
-        # line.set_ydata(self.y)
         plt.pause(0.01)

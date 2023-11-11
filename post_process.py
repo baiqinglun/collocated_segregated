@@ -2,12 +2,29 @@ from mesh import MeshManager
 from case import CaseManager
 import numpy as np
 from fp import Fp
-from fluid import Fluid
-from solve import SolveManager,ConvectionScheme
+from solve import ConvectionScheme
 import math
 
+"""
+@name: PostProcessManager
+@description: 定义后处理相关参数
+@variable:
+    output_folder：输出文件夹
+    linear_equation_residual_filename：方程求解残差文件名
+    nonlinear_equation_residual_filename：残差文件名
+    vtk_data_filename：vtk数据文件名
+    dat_filename：温度
+    save_residual_frequency：残差保存频率
+    save_output_frequency：输出文件保存频率
+    start_time：开始时间
+    end_time:结束时间
+@function: 
+    write_*()：文件写入
+"""
+
+
 class PostProcessManager:
-    def __init__(self,output_folder):
+    def __init__(self, output_folder):
         self.output_folder = output_folder
         self.linear_equation_residual_filename = "linear_equation_residual.res"
         self.nonlinear_equation_residual_filename = "nonlinear_equation_residual.res"
@@ -19,35 +36,36 @@ class PostProcessManager:
         self.start_time = Fp(0.0)
         self.end_time = Fp(0.0)
 
-    def set_linear_equation_residual_filename(self,linear_equation_residual_filename):
+    def set_linear_equation_residual_filename(self, linear_equation_residual_filename):
         self.linear_equation_residual_filename = linear_equation_residual_filename
 
-    def set_nonlinear_equation_residual_filename(self,nonlinear_equation_residual_filename):
+    def set_nonlinear_equation_residual_filename(self, nonlinear_equation_residual_filename):
         self.nonlinear_equation_residual_filename = nonlinear_equation_residual_filename
 
-    def set_vtk_data_filename(self,vtk_data_filename):
+    def set_vtk_data_filename(self, vtk_data_filename):
         self.vtk_data_filename = vtk_data_filename
 
-    def set_dat_filename(self,dat_filename):
+    def set_dat_filename(self, dat_filename):
         self.dat_filename = dat_filename
 
-    def set_save_residual_frequency(self,save_residual_frequency):
+    def set_save_residual_frequency(self, save_residual_frequency):
         self.save_residual_frequency = save_residual_frequency
 
     def set_output_frequency(self, output_frequency):
         self.save_output_frequency = output_frequency
 
-    def set_frequency(self,save_residual_frequency,output_frequency):
+    def set_frequency(self, save_residual_frequency, output_frequency):
         self.save_residual_frequency = save_residual_frequency
         self.save_output_frequency = output_frequency
 
-    def set_output_files_name(self,vtk_data_filename,dat_filename,linear_equation_residual_filename,nonlinear_equation_residual_filename):
+    def set_output_files_name(self, vtk_data_filename, dat_filename, linear_equation_residual_filename,
+                              nonlinear_equation_residual_filename):
         self.linear_equation_residual_filename = linear_equation_residual_filename
         self.nonlinear_equation_residual_filename = nonlinear_equation_residual_filename
         self.vtk_data_filename = vtk_data_filename
         self.dat_filename = dat_filename
 
-    def write_vtk_file(self,mesh:MeshManager,case:CaseManager):
+    def write_vtk_file(self, mesh: MeshManager, case: CaseManager):
         n_x_point = mesh.n_x_point
         n_y_point = mesh.n_y_point
         n_z_point = mesh.n_z_point
@@ -80,7 +98,7 @@ class PostProcessManager:
             t_arr = np.ravel(t[:, :, :], order='F')  # 将多维数组转化为一维数组，且不会产生源数据的副本
             vtk_fid.write(' '.join(str(i) for i in t_arr) + '\n')  # 将t_arr 的可迭代对象中的元素使用' '连接成一个字符串
 
-    def write_dat_file(self,mesh:MeshManager,case:CaseManager):
+    def write_dat_file(self, mesh: MeshManager, case: CaseManager):
         n_x_point = mesh.n_x_point
         n_y_point = mesh.n_y_point
         n_z_point = mesh.n_z_point
@@ -105,22 +123,21 @@ class PostProcessManager:
 
     # res非线性残差文件写入
     def write_nonlinear_equation_residual_filename(self):
-        with open(f"{self.output_folder}/{self.nonlinear_equation_residual_filename}", 'w') as nonlinear_equation_residual_id:
+        with open(f"{self.output_folder}/{self.nonlinear_equation_residual_filename}",
+                  'w') as nonlinear_equation_residual_id:
             nonlinear_equation_residual_id.write("#it, walltime, l2_t/l2_max_t\n")
             nonlinear_equation_residual_id.close()
 
-    def write_temperature_Pe_L_center(self, n_x_cell,t,initial_u,convection_scheme, conductivity_coefficient):
-        # Build the local data for np array
+    def write_temperature_Pe_L_center(self, n_x_cell, t, initial_u, convection_scheme, conductivity_coefficient):
         out_file = None
         if abs(conductivity_coefficient) > 10000:
-            Pe_L = Fp(0.0)
+            PeL = Fp(0.0)
         else:
-            Pe_L = initial_u / conductivity_coefficient
+            PeL = initial_u / conductivity_coefficient
 
-        print("Check Pe_L ", Pe_L)
+        print("Check Pe_L ", PeL)
 
         # 0: Upwind; 1: CD; 2: Power-law; 3: SOU (to be implemented);
-
         print("Check conv_scheme ", convection_scheme)
 
         if convection_scheme == ConvectionScheme.upwind:
@@ -128,15 +145,16 @@ class PostProcessManager:
         elif convection_scheme == ConvectionScheme.cd:
             out_file = f'{self.output_folder}/center_temp_x_center.dat'
 
-        # Open temperature output files
         with open(out_file, 'a') as file3:
-            # Write temperature data at center point
-            i = int(n_x_cell / 2) - 1
+            # 模拟解，若为偶数4，t[1,0,0]，第二个网格，xtemp=1/3
+            # 精确解，若为基数3，t[1,0,0]，第二个网格，xtemp=1/2
+            i = int((n_x_cell + 1) / 2) - 1
             j = 0
             k = 0
-            if abs(Pe_L) < Fp(1.e-3):
-                file3.write(f"{Pe_L} {t[i, j, k]} {0.5}\n")
+            if abs(PeL) < Fp(1.e-3):
+                file3.write(f"{PeL} {t[i, j, k]} {0.5}\n")
             else:
-                xtemp = 0.5
-                result = (math.exp(Pe_L * xtemp) - 1) / (math.exp(Pe_L) - 1)
-                file3.write(f"{Pe_L} {t[i, j, k]} {result}\n")
+                xtemp = (n_x_cell / 2 - 1) / (n_x_cell - 1) if (n_x_cell % 2 == 0) else ((n_x_cell + 1) / 2 - 1) / (
+                            n_x_cell - 1)
+                result = (math.exp(PeL * xtemp) - 1) / (math.exp(PeL) - 1)
+                file3.write(f"{PeL} {t[i, j, k]} {result}\n")

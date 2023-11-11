@@ -33,7 +33,8 @@ class SolveManager:
         self.residual_error = Fp(2.-6)
         self.solve_equation_total_count = 0
 
-        self.convection_scheme = ConvectionScheme.upwind
+        self.convection_scheme = ConvectionScheme.cd
+        self.conduction_scheme = ConvectionScheme.cd
 
         # 二阶范数
         self.l2_curr = Fp(0.0)
@@ -67,6 +68,12 @@ class SolveManager:
 
     def set_convection_scheme(self,convection_scheme):
         self.convection_scheme = convection_scheme
+
+    def set_conduction_scheme(self,conduction_scheme):
+        self.conduction_scheme = conduction_scheme
+
+    def set_equation_type(self,equation_type):
+        self.equation_type = equation_type
 
     def iter_step_count(self):
         return self.iter_step_count

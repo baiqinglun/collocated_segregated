@@ -3,7 +3,6 @@ from fp import Fp
 from mesh import MeshManager
 from post_process import PostProcessManager
 from solve import SolveManager
-from case import CaseManager,MeshCoefficient2D,MeshCoefficient3D
 
 def eqn_scalar_norm2(solve: SolveManager, dim, it_nl, ncx, ncy, ncz, old_t, t, var):
     l2_max_u = Fp(0.0)
@@ -11,19 +10,8 @@ def eqn_scalar_norm2(solve: SolveManager, dim, it_nl, ncx, ncy, ncz, old_t, t, v
         l2_u = solve.l2_t
         l2_max_u = solve.l2_max_t
 
-        # Compute the L2 norm
-
-        # Equivalen form
-        # for k in range(ncz):
-        #     for j in range(ncy):
-        #         for i in range(ncx):
-        #             res_u = u[i, j, k] - u0[i, j, k]
-        #             l2_u += res_u**2
-        # ncell = ncx*ncy*ncz
-        # l2_u = math.s
     l2_u = np.sqrt(np.mean((t - old_t) ** 2))  # 差值的平方的平均值
 
-    # Compute the maximum L2 norm observed so far
     l2_max_u = max(l2_u, l2_max_u)
 
     return (l2_u, l2_max_u)
@@ -42,7 +30,6 @@ def scalar_Pj(dim,solve:SolveManager,post:PostProcessManager,current_iter, relax
         t.fill(Fp(0.0))
 
     t_old = np.zeros((ncx, ncy, ncz), dtype=Fp)
-    print("equation_current_iter=",solve.solve_equation_total_count)
     for equation_current_iter in range(1, solve_equation_step_count + 1):
         t_old = t.copy()
         norm2 = 0.0
@@ -76,7 +63,6 @@ def scalar_Pj(dim,solve:SolveManager,post:PostProcessManager,current_iter, relax
                             tt = 0.0
                         else:
                             tt = t_old[i, j, k + 1]
-
                     # t_new = (...)为定义t_new的值，赋值给等号右侧表达式的结果，一个值
                     t_new = (\
                                 - t_coefficient[i, j, k, mesh_coefficient.aE_id.value] * te\
@@ -87,7 +73,6 @@ def scalar_Pj(dim,solve:SolveManager,post:PostProcessManager,current_iter, relax
                         )
                     if dim == 3:
                         t_new = t_new - t_coefficient[i, j, k, mesh_coefficient.aT_id.value] * tt - t_coefficient[i, j, k, mesh_coefficient.aB_id.value] * tb
-
                     t_new = t_new / t_coefficient[i, j, k, mesh_coefficient.aP_id.value]
                     du = relax_factor * (t_new - t_old[i, j, k])
                     t[i, j, k] = t_old[i, j, k] + du
