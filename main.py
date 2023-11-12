@@ -13,49 +13,21 @@ import time
 if __name__ == '__main__':
     # 读取配置文件
     readSetting = ReadSetting("setting.json")
-    dim = readSetting.dim
-    x_cell = readSetting.x_cell
-    y_cell = readSetting.y_cell
-    z_cell = readSetting.z_cell
-    coordinate_limit_count = readSetting.coordinate_limit_count
-    init_temperature = readSetting.init_temperature
-    density = readSetting.density
-    mu = readSetting.mu
-    specific_heat_capacity = readSetting.specific_heat_capacity
-    conductivity_coefficient = readSetting.conductivity_coefficient
-    x_min_type = readSetting.x_min_type
-    x_max_type = readSetting.x_max_type
-    y_min_type = readSetting.y_min_type
-    y_max_type = readSetting.y_max_type
-    z_min_type = readSetting.z_min_type
-    z_max_type = readSetting.z_max_type
-    x_min_temperature_type = readSetting.x_min_temperature_type
-    x_min_temperature_value = readSetting.x_min_temperature_value
-    x_max_temperature_type = readSetting.x_max_temperature_type
-    x_max_temperature_value = readSetting.x_max_temperature_value
-    y_min_temperature_type = readSetting.y_min_temperature_type
-    y_min_temperature_value = readSetting.y_min_temperature_value
-    y_max_temperature_type = readSetting.y_max_temperature_type
-    y_max_temperature_value = readSetting.y_max_temperature_value
-    z_min_temperature_type = readSetting.z_min_temperature_type
-    z_min_temperature_value = readSetting.z_min_temperature_value
-    z_max_temperature_type = readSetting.z_max_temperature_type
-    z_max_temperature_value = readSetting.z_max_temperature_value
-    iter_step_count = readSetting.iter_step_count
-    solve_equation_step_count = readSetting.solve_equation_step_count
-    relax_factor = readSetting.relax_factor
-    solve_equation_tolerance = readSetting.solve_equation_tolerance
-    residual_error = readSetting.residual_error
-    save_residual_frequency = readSetting.save_residual_frequency
-    output_frequency = readSetting.output_frequency
-    output_folder = readSetting.output_folder
-    linear_equation_residual_filename = readSetting.linear_equation_residual_filename
-    nonlinear_equation_residual_filename = readSetting.nonlinear_equation_residual_filename
-    vtk_data_filename = readSetting.vtk_data_filename
-    dat_filename = readSetting.dat_filename
-    is_test = readSetting.is_test
-    is_show_figure = readSetting.is_show_figure
-    u = readSetting.u
+    dim,x_cell,y_cell,z_cell,coordinate_limit_count = readSetting.get_mesh_settings()
+    init_temperature,u = readSetting.get_case_settings()
+    density,mu,specific_heat_capacity,conductivity_coefficient = readSetting.get_fluid_settingsa()
+    x_min_type,x_max_type,y_min_type,y_max_type,z_min_type,\
+    z_max_type,x_min_temperature_type,x_min_temperature_value,\
+    x_max_temperature_type,x_max_temperature_value,\
+    y_min_temperature_type,y_min_temperature_value,\
+    y_max_temperature_type,y_max_temperature_value,\
+    z_min_temperature_type,z_min_temperature_value,\
+    z_max_temperature_type,z_max_temperature_value = readSetting.get_boundary_settings()
+    iter_step_count,solve_equation_step_count,relax_factor,solve_equation_tolerance,residual_error  = readSetting.get_solve_settings()
+    save_residual_frequency,output_frequency,output_folder,\
+    linear_equation_residual_filename,nonlinear_equation_residual_filename,\
+    vtk_data_filename,dat_filename = readSetting.get_post_settings()
+    is_test,is_show_figure = readSetting.get_other_settings()
 
     if not is_test:
         # 网格划分

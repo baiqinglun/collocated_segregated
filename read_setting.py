@@ -9,11 +9,15 @@ class ReadSetting:
             self.y_cell = settings_data["y_cell"]
             self.z_cell = settings_data["z_cell"]
             self.coordinate_limit_count = settings_data["coordinate_limit_count"]
-            self.init_temperature = settings_data["init_temperature"]
+            
             self.density = settings_data["density"]
             self.mu = settings_data["mu"]
             self.specific_heat_capacity = settings_data["specific_heat_capacity"]
             self.conductivity_coefficient = settings_data["conductivity_coefficient"]
+            
+            self.init_temperature = settings_data["init_temperature"]
+            self.u = settings_data["u"]
+            
             self.x_min_type = settings_data["x_min_type"]
             self.x_max_type = settings_data["x_max_type"]
             self.y_min_type = settings_data["y_min_type"]
@@ -32,11 +36,13 @@ class ReadSetting:
             self.z_min_temperature_value = settings_data["z_min_temperature_value"]
             self.z_max_temperature_type = settings_data["z_max_temperature_type"]
             self.z_max_temperature_value = settings_data["z_max_temperature_value"]
+            
             self.iter_step_count = settings_data["iter_step_count"]
             self.solve_equation_step_count = settings_data["solve_equation_step_count"]
             self.relax_factor = settings_data["relax_factor"]
             self.solve_equation_tolerance = settings_data["solve_equation_tolerance"]
             self.residual_error = settings_data["residual_error"]
+            
             self.save_residual_frequency = settings_data["save_residual_frequency"]
             self.output_frequency = settings_data["output_frequency"]
             self.output_folder = settings_data["output_folder"]
@@ -44,6 +50,35 @@ class ReadSetting:
             self.nonlinear_equation_residual_filename = settings_data["nonlinear_equation_residual_filename"]
             self.vtk_data_filename = settings_data["vtk_data_filename"]
             self.dat_filename = settings_data["dat_filename"]
+            
             self.is_test = settings_data["is_test"]
             self.is_show_figure = settings_data["is_show_figure"]
-            self.u = settings_data["u"]
+            
+
+    def get_mesh_settings(self):
+        return self.dim,self.x_cell,self.y_cell,self.z_cell,self.coordinate_limit_count
+    
+    def get_fluid_settingsa(self):
+        return self.density,self.mu,self.specific_heat_capacity,self.conductivity_coefficient
+    
+    def get_case_settings(self):
+        return self.init_temperature,self.u
+    
+    def get_boundary_settings(self):
+        return self.x_min_type,self.x_max_type,self.y_min_type,\
+                self.y_max_type,self.z_min_type,self.z_max_type,\
+                self.x_min_temperature_type,self.x_min_temperature_value,\
+                self.x_max_temperature_type,self.x_max_temperature_value,\
+                self.y_min_temperature_type,self.y_min_temperature_value,\
+                self.y_max_temperature_type,self.y_max_temperature_value,\
+                self.z_min_temperature_type,self.z_min_temperature_value,\
+                self.z_max_temperature_type,self.z_max_temperature_value
+    
+    def get_solve_settings(self):
+        return self.iter_step_count,self.solve_equation_step_count,self.relax_factor,self.solve_equation_tolerance,self.residual_error
+    
+    def get_post_settings(self):
+        return self.save_residual_frequency,self.output_frequency,self.output_folder,self.linear_equation_residual_filename,self.nonlinear_equation_residual_filename,self.vtk_data_filename,self.dat_filename
+    
+    def get_other_settings(self):
+        return self.is_test,self.is_show_figure
