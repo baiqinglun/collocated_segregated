@@ -26,28 +26,20 @@ sign_f ：-1 或者 1
 
 # 格式
 def calculate_face_coefficient(area, dx, ul, ur, mul, mur, rho, sign_f, scheme):
-    # f = rho * Fp(0.5) * (ul + ur)
-    # d = Fp(2.0) * mul * mur / (mul + mur + Fp(1.e-12)) / dx
-    # a = None
-    # if scheme == ConvectionScheme.upwind:
-    #     # Upwind
-    #     # Pantakar Table 5.2
-    #     a = area * (d + max(Fp(0.0), sign_f * f))
-    #     # print('a ', a)
-    # elif scheme == ConvectionScheme.cd:
-    #     # Central Difference
-    #     # Pantakar Table 5.2中的CD scheme和红宝书Eq. (11.25)等价，课上推导
-    #     a = area * (d * (Fp(1.0) - Fp(0.5) * abs(f / d)) + max(Fp(0.0), sign_f * f))
-    #     # print('a ', a)
-    # elif scheme == ConvectionScheme.power_law:
-    #     # Power-law
-    #     # Pantakar Table 5.2
-    #     a = area * (d * a_pec_pow(abs(f / d)) + max(Fp(0.0), sign_f * f))
-    # elif scheme == ConvectionScheme.sou:
-    #     print("ConvectionScheme.sou")
     f = rho * Fp(0.5) * (ul + ur)
     d = Fp(2.0) * mul * mur / (mul + mur + Fp(1.e-12)) / dx
-    a = area * (d + max(Fp(0.0), sign_f * f))
+    a = None
+    if scheme == ConvectionScheme.upwind:
+        # Upwind
+        a = area * (d + max(Fp(0.0), sign_f * f))
+    elif scheme == ConvectionScheme.cd:
+        # Central Difference
+        a = area * (d * (Fp(1.0) - Fp(0.5) * abs(f / d)) + max(Fp(0.0), sign_f * f))
+    elif scheme == ConvectionScheme.power_law:
+        # Power-law
+        a = area * (d * a_pec_pow(abs(f / d)) + max(Fp(0.0), sign_f * f))
+    elif scheme == ConvectionScheme.sou:
+        print("ConvectionScheme.sou")
     return a
 
 
