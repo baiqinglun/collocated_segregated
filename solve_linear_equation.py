@@ -1,10 +1,11 @@
+'''求解线性方程'''
 import numpy as np
 from fp import Fp
-from mesh import MeshManager
 from post_process import PostProcessManager
 from solve import SolveManager
 
 def eqn_scalar_norm2(solve: SolveManager, dim, it_nl, ncx, ncy, ncz, old_t, t, var):
+    '''eqn_scalar_norm2'''
     l2_max_u = Fp(0.0)
     if var == "temperature":
         l2_u = solve.l2_t
@@ -18,6 +19,7 @@ def eqn_scalar_norm2(solve: SolveManager, dim, it_nl, ncx, ncy, ncz, old_t, t, v
 
 
 def scalar_Pj(dim,solve:SolveManager,post:PostProcessManager,current_iter, relax_factor, ncx, ncy, ncz, t_coefficient,t, init_zero,mesh_coefficient):
+    '''高斯求解'''
     solve_equation_step_count = solve.solve_equation_step_count
     save_residual_frequency = post.save_residual_frequency
     linear_equation_residual_filename = post.linear_equation_residual_filename
@@ -65,15 +67,15 @@ def scalar_Pj(dim,solve:SolveManager,post:PostProcessManager,current_iter, relax
                             tt = t_old[i, j, k + 1]
                     # t_new = (...)为定义t_new的值，赋值给等号右侧表达式的结果，一个值
                     t_new = (\
-                                - t_coefficient[i, j, k, mesh_coefficient.aE_id.value] * te\
-                                - t_coefficient[i, j, k, mesh_coefficient.aW_id.value] * tw\
-                                - t_coefficient[i, j, k, mesh_coefficient.aN_id.value] * tn\
-                                - t_coefficient[i, j, k, mesh_coefficient.aS_id.value] * ts\
-                                + t_coefficient[i, j, k, mesh_coefficient.ab_id.value] \
+                                - t_coefficient[i, j, k, mesh_coefficient.AE_ID.value] * te\
+                                - t_coefficient[i, j, k, mesh_coefficient.AW_ID.value] * tw\
+                                - t_coefficient[i, j, k, mesh_coefficient.AN_ID.value] * tn\
+                                - t_coefficient[i, j, k, mesh_coefficient.AS_ID.value] * ts\
+                                + t_coefficient[i, j, k, mesh_coefficient.ABRC_ID.value] \
                         )
                     if dim == 3:
-                        t_new = t_new - t_coefficient[i, j, k, mesh_coefficient.aT_id.value] * tt - t_coefficient[i, j, k, mesh_coefficient.aB_id.value] * tb
-                    t_new = t_new / t_coefficient[i, j, k, mesh_coefficient.aP_id.value]
+                        t_new = t_new - t_coefficient[i, j, k, mesh_coefficient.AT_ID.value] * tt - t_coefficient[i, j, k, mesh_coefficient.aB_id.value] * tb
+                    t_new = t_new / t_coefficient[i, j, k, mesh_coefficient.AP_ID.value]
                     du = relax_factor * (t_new - t_old[i, j, k])
                     t[i, j, k] = t_old[i, j, k] + du
                     norm2 = norm2 + du * du
@@ -93,7 +95,7 @@ def scalar_Pj(dim,solve:SolveManager,post:PostProcessManager,current_iter, relax
                 print('current_iter, equation_current_iter, total_linsol_iters, norm2, initial_norm, max_norm, rel_norm ', current_iter, equation_current_iter, solve.solve_equation_total_count, norm2,
                       initial_norm, max_norm, rel_norm)
 
-                with open(f"{output_folder}/{linear_equation_residual_filename}", 'a') as linear_equation_residual_filename_id:
+                with open(file=f"{output_folder}/{linear_equation_residual_filename}", mode='a',encoding='utf-8') as linear_equation_residual_filename_id:
                     print(current_iter, equation_current_iter, solve.solve_equation_total_count, norm2, initial_norm, max_norm, rel_norm, file=linear_equation_residual_filename_id)
             break
     return

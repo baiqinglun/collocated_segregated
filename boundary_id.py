@@ -1,46 +1,46 @@
+'''边界条件的枚举类型'''
 from enum import Enum
 
-# 面的索引
 class FaceId2D(Enum):
-    east = 0
-    west = 1
-    south = 2
-    north = 3
-    count = 4
+    '''面的索引(2D)'''
+    EAST = 0
+    WEST = 1
+    SOUTH = 2
+    NORTH = 3
+    COUNT = 4
 
 
 class FaceId3D(Enum):
-    east = 0
-    west = 1
-    south = 2
-    north = 3
-    top = 4
-    bottom = 5
-    count = 6
+    '''面的索引(3D)'''
+    EAST = 0
+    WEST = 1
+    SOUTH = 2
+    NORTH = 3
+    TOP = 4
+    BOTTOM = 5
+    COUNT = 6
 
-
-# 4种物理边界条件
 class PhysicsBoundaryID(Enum):
-    none = 0
-    wall = 1
-    inlet = 2
-    outlet = 3
-    count = 4
+    '''4种物理边界条件'''
+    NONE = 0
+    WALL = 1
+    INLET = 2
+    OUTLET = 3
+    COUNT = 4
 
-# 温度边界条件
 class TemperatureBoundaryID(Enum):
-    constant = 0
-    heat_flux = 1
-    count = 2
+    '''面的索引'''
+    CONSTANT = 0
+    HEAT_FLUX = 1
+    COUNT = 2
 
-
-# 单元的边界
 class BoundaryLimitID(Enum):
-    none = 0 # 内部面
-    x_min = 1
-    x_max = 2
-    y_min = 3
-    y_max = 4
-    z_min = 5
-    z_max = 6
-    count = 7
+    '''单元的边界'''
+    NONE = 0 # 内部面
+    X_MIN = 1
+    X_MAX = 2
+    Y_MIN = 3
+    Y_MAX = 4
+    Z_MIN = 5
+    Z_MAX = 6
+    COUNT = 7

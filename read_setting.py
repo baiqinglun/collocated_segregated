@@ -1,6 +1,8 @@
+'''读取json配置文件'''
 import json
 
 class ReadSetting:
+    '''读取配置类'''
     def __init__(self,setting_file_name):
         with open(setting_file_name, 'r', encoding='UTF-8') as settings_file:
             settings_data = json.load(settings_file)
@@ -56,15 +58,19 @@ class ReadSetting:
             
 
     def get_mesh_settings(self):
+        '''获取网格相关设置'''
         return self.dim,self.x_cell,self.y_cell,self.z_cell,self.coordinate_limit_count
     
     def get_fluid_settingsa(self):
+        '''获取流体属性相关设置'''
         return self.density,self.mu,self.specific_heat_capacity,self.conductivity_coefficient
     
     def get_case_settings(self):
+        '''获取网格数据相关设置'''
         return self.init_temperature,self.u
     
     def get_boundary_settings(self):
+        '''获取边界条件相关设置'''
         return self.x_min_type,self.x_max_type,self.y_min_type,\
                 self.y_max_type,self.z_min_type,self.z_max_type,\
                 self.x_min_temperature_type,self.x_min_temperature_value,\
@@ -75,10 +81,13 @@ class ReadSetting:
                 self.z_max_temperature_type,self.z_max_temperature_value
     
     def get_solve_settings(self):
+        '''获取求解相关设置'''
         return self.iter_step_count,self.solve_equation_step_count,self.relax_factor,self.solve_equation_tolerance,self.residual_error
     
     def get_post_settings(self):
+        '''获取后处理相关设置'''
         return self.save_residual_frequency,self.output_frequency,self.output_folder,self.linear_equation_residual_filename,self.nonlinear_equation_residual_filename,self.vtk_data_filename,self.dat_filename
     
     def get_other_settings(self):
+        '''获取其他设置'''
         return self.is_test,self.is_show_figure

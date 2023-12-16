@@ -1,3 +1,4 @@
+'''入口函数'''
 from case import CaseManager
 from mesh import MeshManager
 from fluid import Fluid
@@ -8,7 +9,6 @@ from post_process import PostProcessManager
 from collocated_segregated import CollocatedSegregated
 from read_setting import ReadSetting
 from draw import DrawCurves
-import time
 
 if __name__ == '__main__':
     # 读取配置文件
@@ -59,17 +59,17 @@ if __name__ == '__main__':
         solveManager.set_relax_factor(Fp(relax_factor))
         solveManager.set_solve_equation_tolerance(solve_equation_tolerance)
         solveManager.set_residual_error(residual_error)
-        solveManager.set_convection_scheme(ConvectionScheme.cd)
-        solveManager.set_conduction_scheme(ConvectionScheme.cd)
-        solveManager.set_equation_type(EquationType.conduction)
+        solveManager.set_convection_scheme(ConvectionScheme.CD)
+        solveManager.set_conduction_scheme(ConvectionScheme.CD)
+        solveManager.set_equation_type(EquationType.CONDUCTION)
 
-        if solveManager.equation_type == EquationType.conduction:
+        if solveManager.equation_type == EquationType.CONDUCTION:
             fluidBoundary.create_boundary_temperature(dim,
                                                       x_min_temperature_type,  Fp(x_min_temperature_value),
                                                       x_max_temperature_type,  Fp(x_max_temperature_value),
                                                       y_min_temperature_value, Fp(y_min_temperature_value),
                                                       y_max_temperature_value, Fp(y_max_temperature_value))
-        elif solveManager.equation_type == EquationType.conduction_flow:
+        elif solveManager.equation_type == EquationType.CONDUCTION_FLOW:
             if y_cell == 1:
                 fluidBoundary.create_boundary_temperature(dim,
                                                       'constant', Fp(0.0),  # xmin

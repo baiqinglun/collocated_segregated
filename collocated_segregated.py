@@ -1,39 +1,40 @@
+'''分离求解器'''
+import time
 import numpy as np
-from fp import Fp
 from mesh import MeshManager
 from solve import SolveManager, EquationType
 from post_process import PostProcessManager
-from case import CaseManager, MeshCoefficient2D, MeshCoefficient3D
+from case import CaseManager
 from fluid import Fluid
-from collocated_sharing import solve_conduction_coefficient, solve_boundary_conductivity_coefficient, \
-    solve_flow_conduction_coefficient, solve_boundary_flow_conductivity_coefficient
+from collocated_sharing import solve_conduction_coefficient,\
+                                solve_boundary_conductivity_coefficient,\
+                                solve_flow_conduction_coefficient,\
+                                solve_boundary_flow_conductivity_coefficient
 from boundary import FluidBoundaryCondition
 from solve_linear_equation import scalar_Pj, eqn_scalar_norm2
-import time
 from draw import DrawCurves
 
-"""
-@name: CollocatedSegregated
-@description: 分离求解器
-@variable:
-    mesh：网格信息
-    case：数据信息
-    solve：求解器信息
-    boundary：边界条件
-    post：后处理信息
-    fluid：流体信息
-    drawer：绘图信息
-@function: 
-    circulate()：循环求解
-    solve_conduction()：求解扩散方程
-    solve_flow()：求解对流方程
-    solve_conduction_flow()：求解对流扩散方程
-    create_boundary_temperature()：创建温度边界
-"""
-
-
 class CollocatedSegregated:
-    def __init__(self, mesh: MeshManager, case: CaseManager, solve: SolveManager, boundary: FluidBoundaryCondition,
+    """
+    @name: CollocatedSegregated
+    @description: 分离求解器
+    @variable:
+        mesh:网格信息
+        case:数据信息
+        solve:求解器信息
+        boundary:边界条件
+        post:后处理信息
+        fluid:流体信息
+        drawer:绘图信息
+    @function: 
+        circulate()：循环求解
+        solve_conduction()：求解扩散方程
+        solve_flow()：求解对流方程
+        solve_conduction_flow()：求解对流扩散方程
+        create_boundary_temperature()：创建温度边界
+    """
+    def __init__(self, mesh: MeshManager, case: CaseManager, solve: SolveManager,\
+                 boundary: FluidBoundaryCondition,
                  post: PostProcessManager, fluid: Fluid, drawer: DrawCurves = None):
         self.mesh = mesh
         self.dim = mesh.dim
@@ -41,7 +42,8 @@ class CollocatedSegregated:
         self.n_y_cell = mesh.n_y_cell
         self.n_z_cell = mesh.n_z_cell
         self.n_x_point = mesh.n_x_point
-        self.mesh_coefficient_count = case.mesh_coefficient.count.value  # 矩阵系数的个数 # aP,aW,aE,aS,aN,b
+        # 矩阵系数的个数 # aP,aW,aE,aS,aN,b
+        self.mesh_coefficient_count = case.mesh_coefficient.COUNT.value
         self.x = mesh.x
         self.y = mesh.y
         self.z = mesh.z
@@ -64,7 +66,7 @@ class CollocatedSegregated:
         self.solve = solve
         self.iter_step_count = solve.iter_step_count
         self.dt = solve.dt
-        self.equation_type = solve.equation_type  # 用到的方程
+        self.equation_type = solve.equation_type #用到的方程
         self.solve_equation_step_count = solve.solve_equation_step_count
         self.solve_equation_tolerance = solve.solve_equation_tolerance
         self.relax_factor = solve.relax_factor
@@ -93,8 +95,8 @@ class CollocatedSegregated:
 
         # 根据函数类型，调用不同的函数
         self.function_mapping = {
-            EquationType.conduction: self.solve_conduction,
-            EquationType.conduction_flow: self.solve_conduction_flow,
+            EquationType.CONDUCTION: self.solve_conduction,
+            EquationType.CONDUCTION_FLOW: self.solve_conduction_flow,
         }
 
     def solve_conduction(self, current_iter):
@@ -196,10 +198,10 @@ class CollocatedSegregated:
                           self.solve.l2_t / self.solve.l2_max_t)
 
                     with open(f"{self.output_folder}/{self.post.nonlinear_equation_residual_filename}",
-                              'a') as nonlinear_equation_residual_filename_id:  # 追加模式
+                              'a',encoding="utf-8") as nonlinear_equation_residual_filename_id:  # 追加模式
                         nonlinear_equation_residual_filename_id.write(
-                            "{}  {} {}\n".format(current_iter, time.perf_counter() - self.post.start_time,
-                                                 self.solve.l2_t / self.solve.l2_max_t))
+                            f"{current_iter} {time.perf_counter() - self.post.start_time} {self.solve.l2_t / self.solve.l2_max_t}\n")
+                
                 if self.drawer:
                     self.drawer.draw(time.perf_counter() - self.post.start_time,
                                      [self.solve.l2_t / self.solve.l2_max_t])

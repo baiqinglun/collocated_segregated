@@ -1,16 +1,17 @@
+'''绘图类'''
 import matplotlib.pyplot as plt
 
-"""
-@name: DrawCurves
-@description: 绘制残差曲线图
-@variable:
-    ax:轴
-    time:[]
-    residuals:[[]]
-@function: 
-    draw()：绘图
-"""
 class DrawCurves:
+    """
+    @name: DrawCurves
+    @description: 绘制残差曲线图
+    @variable:
+        ax:轴
+        time:[]
+        residuals:[[]]
+    @function: 
+        draw()：绘图
+    """
     def __init__(self):
         self.fig = plt.figure()
         self.ax = self.fig.add_subplot(1, 1, 1)
@@ -24,6 +25,7 @@ class DrawCurves:
         self.is_show = True
 
     def draw(self,x,ys):
+        '''绘制'''
         self.time.append(x)
         for index,y in enumerate(ys):
             self.residuals[index].append(y)

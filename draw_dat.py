@@ -1,7 +1,8 @@
+'''绘图功能'''
 import matplotlib.pyplot as plt
 
 # 读取dat文件
-with open('output/center_temp_x_center.dat', 'r') as file:
+with open(file='output/center_temp_x_center.dat',mode='r', encoding="utf-8") as file:
     lines = file.readlines()
 
 # 提取数据
