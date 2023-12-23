@@ -50,7 +50,9 @@ class ReadSetting:
             self.output_folder = settings_data["output_folder"]
             self.linear_equation_residual_filename = settings_data["linear_equation_residual_filename"]
             self.nonlinear_equation_residual_filename = settings_data["nonlinear_equation_residual_filename"]
-            self.vtk_data_filename = settings_data["vtk_data_filename"]
+            self.pressure_vtk_data_filename = settings_data["pressure_vtk_data_filename"]
+            self.temperature_vtk_data_filename = settings_data["temperature_vtk_data_filename"]
+            self.velocity_vtk_data_filename = settings_data["velocity_vtk_data_filename"]
             self.dat_filename = settings_data["dat_filename"]
             
             self.is_test = settings_data["is_test"]
@@ -86,7 +88,9 @@ class ReadSetting:
     
     def get_post_settings(self):
         '''获取后处理相关设置'''
-        return self.save_residual_frequency,self.output_frequency,self.output_folder,self.linear_equation_residual_filename,self.nonlinear_equation_residual_filename,self.vtk_data_filename,self.dat_filename
+        return self.save_residual_frequency,self.output_frequency,self.output_folder,self.linear_equation_residual_filename,\
+               self.nonlinear_equation_residual_filename,self.pressure_vtk_data_filename,self.temperature_vtk_data_filename,\
+               self.velocity_vtk_data_filename,self.dat_filename
     
     def get_other_settings(self):
         '''获取其他设置'''

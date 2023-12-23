@@ -39,6 +39,9 @@ class CaseManager:
         self.n_x_cell = mesh.n_x_cell
         self.n_y_cell = mesh.n_y_cell
         self.n_z_cell = mesh.n_z_cell
+        self.n_x_point = mesh.n_x_point
+        self.n_y_point = mesh.n_y_point
+        self.n_z_point = mesh.n_z_point
         self.mesh = mesh
 
         self.mesh_coefficient = None
@@ -49,12 +52,12 @@ class CaseManager:
         self.t_coefficient = None
         self.p_coefficient = None
 
-        self.initial_u = None
-        self.initial_v = None
-        self.initial_w = None
-        self.initial_uf = None
-        self.initial_vf = None
-        self.initial_wf = None
+        self.initial_u = Fp(0.0)
+        self.initial_v = Fp(0.0)
+        self.initial_w = Fp(0.0)
+        self.initial_uf = Fp(0.0)
+        self.initial_vf = Fp(1.0)
+        self.initial_wf = Fp(0.0)
         self.initial_t = None
         self.initial_p = None
 
@@ -94,17 +97,19 @@ class CaseManager:
         self.w = np.zeros((self.n_x_cell, self.n_y_cell, self.n_z_cell), dtype=Fp)
         self.t = np.zeros((self.n_x_cell, self.n_y_cell, self.n_z_cell), dtype=Fp)
         self.p = np.zeros((self.n_x_cell, self.n_y_cell, self.n_z_cell), dtype=Fp)
-
+        
         # 使用压力修正方程时的中间变量
-        self.uf = np.zeros((self.n_x_cell, self.n_y_cell, self.n_z_cell), dtype=Fp)
-        self.vf = np.zeros((self.n_x_cell, self.n_y_cell, self.n_z_cell), dtype=Fp)
-        self.wf = np.zeros((self.n_x_cell, self.n_y_cell, self.n_z_cell), dtype=Fp)
+        self.uf = np.zeros((self.n_x_point, self.n_y_cell, self.n_z_cell), dtype=Fp)
+        self.vf = np.zeros((self.n_x_cell, self.n_y_point, self.n_z_cell), dtype=Fp)
+        self.wf = np.zeros((self.n_x_cell, self.n_y_cell, self.n_z_point), dtype=Fp)
         self.pp = np.zeros((self.n_x_cell, self.n_y_cell, self.n_z_cell), dtype=Fp)
 
         # 源项有关的变量
-        self.ru = np.zeros((self.n_x_cell, self.n_y_cell, self.n_z_cell), dtype=Fp)
-        self.rv = np.zeros((self.n_x_cell, self.n_y_cell, self.n_z_cell), dtype=Fp)
-        self.rw = np.zeros((self.n_x_cell, self.n_y_cell, self.n_z_cell), dtype=Fp)
+        self.ru = np.zeros((self.n_x_point, self.n_y_cell, self.n_z_cell), dtype=Fp)
+        self.rv = np.zeros((self.n_x_cell, self.n_y_point, self.n_z_cell), dtype=Fp)
+        self.rw = np.zeros((self.n_x_cell, self.n_y_cell, self.n_z_point), dtype=Fp)
+        self.rp = np.zeros((self.n_x_cell, self.n_y_cell, self.n_z_point), dtype=Fp)
+        self.rt = np.zeros((self.n_x_cell, self.n_y_cell, self.n_z_point), dtype=Fp)
 
     def set_temperature(self, temperature):
         """

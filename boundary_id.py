@@ -21,18 +21,26 @@ class FaceId3D(Enum):
     COUNT = 6
 
 class PhysicsBoundaryID(Enum):
-    '''4种物理边界条件'''
+    '''物理边界条件'''
     NONE = 0
     WALL = 1
     INLET = 2
     OUTLET = 3
     COUNT = 4
 
+class VelocityBoundaryID(Enum):
+    '''速度边界条件'''
+    NONE = 0
+    CONSTANT = 1
+    VELOCITY_FLUX = 2
+    COUNT = 3
+
 class TemperatureBoundaryID(Enum):
-    '''面的索引'''
-    CONSTANT = 0
-    HEAT_FLUX = 1
-    COUNT = 2
+    '''温度边界条件'''
+    NONE = 0
+    CONSTANT = 1
+    HEAT_FLUX = 2
+    COUNT = 3
 
 class BoundaryLimitID(Enum):
     '''单元的边界'''

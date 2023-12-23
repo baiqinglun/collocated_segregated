@@ -1,20 +1,34 @@
 '''边界条件设置'''
+from typing import List
 import numpy as np
 from fp import Fp
 from mesh import MeshManager
 from boundary_id import FaceId2D, FaceId3D, PhysicsBoundaryID, \
-                        TemperatureBoundaryID, BoundaryLimitID
+                        TemperatureBoundaryID, BoundaryLimitID,\
+                        VelocityBoundaryID
 
 class PhysicsBoundaryCondition:
     '''物理边界条件'''
     def __init__(self):
-        self.type = 0
+        self.type = PhysicsBoundaryID.NONE
 
+class VelocityBoundaryCondition:
+    '''速度边界条件'''
+    def __init__(self):
+        self.u_type = VelocityBoundaryID.NONE
+        self.v_type = VelocityBoundaryID.NONE
+        self.w_type = VelocityBoundaryID.NONE
+        self.u = Fp(0.0)
+        self.v = Fp(0.0)
+        self.w = Fp(0.0)
+        self.u_flux = Fp(0.0)
+        self.v_flux = Fp(0.0)
+        self.w_flux = Fp(0.0)
 
 class TemperatureBoundaryCondition:
     '''温度边界条件'''
     def __init__(self):
-        self.type = 0
+        self.type = TemperatureBoundaryID.NONE
         self.t = Fp(0.0)
         self.heat_flux = Fp(0.0)
 
@@ -24,22 +38,29 @@ class FluidBoundaryCondition:
     @description: 定义流体的边界条件
     @variable:
         face_boundary:每个网格的面
-        physics_boundary_condition:[]：物理边界条件
-        temperature_boundary_condition:[]：温度边界条件
+        physics_boundary_condition:[] ——> 物理边界条件
+        velocity_boundary_condition:[] ——> 速度边界条件
+        temperature_boundary_condition:[] ——> 温度边界条件
     @function: 
-        create_face_boundary()：创建边界
-        create_boundary()：创建物理边界
-        create_boundary_temperature()：创建温度边界
+        create_face_boundary() ——> 创建边界
+        create_boundary() ——> 创建物理边界
+        create_boundary_temperature() ——> 创建温度边界
+        create_boundary_velocity() ——> 创建速度边界
     """
     def __init__(self, dim):
         self.face_boundary = None  # 存储网格的每个面的边界，判断是边界还是内部
         self.face_id = FaceId2D if dim == 2 else FaceId3D
 
         self.physics_boundary_condition = []
+        self.velocity_boundary_condition = []
         self.temperature_boundary_condition = []
         for _ in range(BoundaryLimitID.COUNT.value):
             self.physics_boundary_condition.append(PhysicsBoundaryCondition())
+            self.velocity_boundary_condition.append(VelocityBoundaryCondition())
             self.temperature_boundary_condition.append(TemperatureBoundaryCondition())
+
+        self.p_outlet  = Fp(0.0)
+        self.pp_outlet = Fp(0.0)
 
     def create_face_boundary(self, mesh: MeshManager):
         '''创建单元面边界条件'''
@@ -58,7 +79,7 @@ class FluidBoundaryCondition:
         z = mesh.z
 
         # 对应Boundary的枚举类型
-        self.face_boundary = np.full((n_x_cell, n_y_cell, n_z_cell, 2 * dim),\
+        self.face_boundary:np.ndarray = np.full((n_x_cell, n_y_cell, n_z_cell, 2 * dim),\
                                      BoundaryLimitID.NONE, dtype=BoundaryLimitID)
 
         # 确定单元的每个面的位置，东西南北上下
@@ -115,6 +136,67 @@ class FluidBoundaryCondition:
             self.physics_boundary_condition[index].type = PhysicsBoundaryID.WALL
         else:
             self.physics_boundary_condition[index].type = PhysicsBoundaryID.NONE
+
+    def create_boundary_velocity(self, dim,
+                                    input_vel_type_xmin, input_xmin_value,
+                                    input_vel_type_xmax, input_xmax_value,
+                                    input_vel_type_ymin, input_ymin_value,
+                                    input_vel_type_ymax, input_ymax_value,
+                                    input_vel_type_zmin=["constant","constant","constant"], input_zmin_value=[Fp(0.0), Fp(0.0), Fp(0.0)],
+                                    input_vel_type_zmax=["constant","constant","constant"], input_zmax_value=[Fp(0.0), Fp(0.0), Fp(0.0)]):
+        '''总网格边界赋速度边界条件'''
+        index = BoundaryLimitID.NONE.value
+        self.velocity_boundary_condition[index].u_type = VelocityBoundaryID.NONE
+        self.velocity_boundary_condition[index].v_type = VelocityBoundaryID.NONE
+        self.velocity_boundary_condition[index].u = Fp(0.0)
+        self.velocity_boundary_condition[index].v = Fp(0.0)
+        self.velocity_boundary_condition[index].u_flux = Fp(0.0)
+        self.velocity_boundary_condition[index].v_flux = Fp(0.0)
+        self.set_velocity_boundary_condition(BoundaryLimitID.X_MIN.value, input_vel_type_xmin, input_xmin_value)
+        self.set_velocity_boundary_condition(BoundaryLimitID.X_MAX.value, input_vel_type_xmax, input_xmax_value)
+        self.set_velocity_boundary_condition(BoundaryLimitID.Y_MIN.value, input_vel_type_ymin, input_ymin_value)
+        self.set_velocity_boundary_condition(BoundaryLimitID.Y_MAX.value, input_vel_type_ymax, input_ymax_value)
+
+        if dim == 3:
+            self.velocity_boundary_condition[index].w_type = VelocityBoundaryID.NONE
+            self.velocity_boundary_condition[index].w = Fp(0.0)
+            self.velocity_boundary_condition[index].w_flux = Fp(0.0)
+            self.set_velocity_boundary_condition(BoundaryLimitID.Z_MIN.value, input_vel_type_zmin, input_zmin_value)
+            self.set_velocity_boundary_condition(BoundaryLimitID.Z_MAX.value, input_vel_type_zmax, input_zmax_value)
+
+    def set_velocity_boundary_condition(self, index, buff, value):
+        '''设置速度边界条件'''
+        attributes = ['u', 'v', 'w']
+        for i, attr in enumerate(attributes):
+            if buff[i] == 'constant':
+                setattr(self.velocity_boundary_condition[index], f'{attr}_type', VelocityBoundaryID.CONSTANT)
+                setattr(self.velocity_boundary_condition[index], attr, value[i])
+            elif buff[i] == 'flux':
+                setattr(self.velocity_boundary_condition[index], f'{attr}_type', VelocityBoundaryID.VELOCITY_FLUX)
+                setattr(self.velocity_boundary_condition[index], f'{attr}_flux', value[i])
+        
+        # setattr函数设置动态属性的值
+                
+        # if buff[0] == 'constant':
+        #     self.velocity_boundary_condition[index].u_type = VelocityBoundaryID.CONSTANT
+        #     self.velocity_boundary_condition[index].u = value[0]
+        # elif buff[0] == 'flux':
+        #     self.velocity_boundary_condition[index].u_type = VelocityBoundaryID.VELOCITY_FLUX
+        #     self.velocity_boundary_condition[index].u_flux = value[0]
+
+        # if buff[1] == 'constant':
+        #     self.velocity_boundary_condition[index].v_type = VelocityBoundaryID.CONSTANT
+        #     self.velocity_boundary_condition[index].v = value[1]
+        # elif buff[1] == 'flux':
+        #     self.velocity_boundary_condition[index].v_type = VelocityBoundaryID.VELOCITY_FLUX
+        #     self.velocity_boundary_condition[index].v_flux = value[1]
+
+        # if buff[2] == 'constant':
+        #     self.velocity_boundary_condition[index].w_type = VelocityBoundaryID.CONSTANT
+        #     self.velocity_boundary_condition[index].w = value[2]
+        # elif buff[2] == 'flux':
+        #     self.velocity_boundary_condition[index].w_type = VelocityBoundaryID.VELOCITY_FLUX
+        #     self.velocity_boundary_condition[index].w_flux = value[2]
 
     def create_boundary_temperature(self, dim,
                                     input_temp_type_xmin, input_xmin_value,

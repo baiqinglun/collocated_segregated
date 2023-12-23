@@ -2,7 +2,7 @@
 放一些小功能的函数
 calculate_area_volume、calculate_face_coefficient、a_pec_pow
 '''
-from solve import ConvectionScheme
+from solve import DiscreteScheme
 from fp import Fp
 
 def calculate_area_volume(dx, dy, dz):
@@ -16,7 +16,7 @@ def calculate_area_volume(dx, dy, dz):
     return area_x, area_y, area_z, volume
 
 # 格式
-def calculate_face_coefficient(area, dx, ul, ur, mul, mur, rho, sign_f, scheme):
+def calculate_face_coefficient(scheme,area, dx, ul, ur, mul, mur, rho, sign_f):
     '''
     dx -------> x单元大小
     ul -------> 左边速度
@@ -29,16 +29,16 @@ def calculate_face_coefficient(area, dx, ul, ur, mul, mur, rho, sign_f, scheme):
     f = rho * Fp(0.5) * (ul + ur)
     d = Fp(2.0) * mul * mur / (mul + mur + Fp(1.e-12)) / dx
     a = None
-    if scheme == ConvectionScheme.UPWIND:
+    if scheme == DiscreteScheme.UPWIND:
         # Upwind
         a = area * (d + max(Fp(0.0), sign_f * f))
-    elif scheme == ConvectionScheme.CD:
+    elif scheme == DiscreteScheme.CD:
         # Central Difference
         a = area * (d * (Fp(1.0) - Fp(0.5) * abs(f / d)) + max(Fp(0.0), sign_f * f))
-    elif scheme == ConvectionScheme.POWER_LOW:
+    elif scheme == DiscreteScheme.POWER_LOW:
         # Power-law
         a = area * (d * a_pec_pow(abs(f / d)) + max(Fp(0.0), sign_f * f))
-    elif scheme == ConvectionScheme.SOU:
+    elif scheme == DiscreteScheme.SOU:
         print("ConvectionScheme.sou")
     return a
 

@@ -4,27 +4,53 @@ from fp import Fp
 from post_process import PostProcessManager
 from solve import SolveManager
 
-def eqn_scalar_norm2(solve: SolveManager, dim, it_nl, ncx, ncy, ncz, old_t, t, var):
+def eqn_scalar_norm2(solve: SolveManager, dim, it_nl, ncx, ncy, ncz, old, now, var):
     '''eqn_scalar_norm2'''
     l2_max_u = Fp(0.0)
     if var == "temperature":
         l2_u = solve.l2_t
         l2_max_u = solve.l2_max_t
+    elif var == "p":
+        l2_u = solve.l2_p
+        l2_max_u = solve.l2_max_p
+    elif var == "u":
+        l2_u = solve.l2_u
+        l2_max_u = solve.l2_max_u
+    elif var == "v":
+        l2_u = solve.l2_v
+        l2_max_u = solve.l2_max_v
+    elif var == "w":
+        l2_u = solve.l2_w
+        l2_max_u = solve.l2_max_w
 
-    l2_u = np.sqrt(np.mean((t - old_t) ** 2))  # 差值的平方的平均值
+    l2_u = np.sqrt(np.mean((now - old) ** 2))  # 差值的平方的平均值
 
     l2_max_u = max(l2_u, l2_max_u)
 
     return (l2_u, l2_max_u)
 
+def eqn_scalar_norm2_p(solve:SolveManager, dim, it_nl, ncx, ncy, ncz, p_coefficient, mesh_coefficient,var):
+    
+    # define local variables related to the case object
+    if var == "p_coefficient":
+        l2_u = solve.l2_pp
+        l2_max_u = solve.l2_max_pp
 
-def scalar_Pj(dim,solve:SolveManager,post:PostProcessManager,current_iter, relax_factor, ncx, ncy, ncz, t_coefficient,t, init_zero,mesh_coefficient):
+    # Compute the L2 norm
+    l2_u = np.sqrt(np.mean((p_coefficient[:,:,:,mesh_coefficient.ABRC_ID.value]*p_coefficient[:,:,:,mesh_coefficient.ABRC_ID.value])**2))
+
+    # Compute the maximum L2 norm observed so far
+    l2_max_u = max(l2_u, l2_max_u)
+
+    return (l2_u, l2_max_u)
+
+def scalar_Pj(dim,solve:SolveManager,post:PostProcessManager,current_iter, relax_factor, ncx, ncy, ncz,\
+               t_coefficient,t, init_zero,mesh_coefficient,residual_error):
     '''高斯求解'''
     solve_equation_step_count = solve.solve_equation_step_count
     save_residual_frequency = post.save_residual_frequency
     linear_equation_residual_filename = post.linear_equation_residual_filename
     iter_step_count = solve.iter_step_count
-    solve_equation_tolerance = solve.solve_equation_tolerance
     output_folder = post.output_folder
 
     initial_norm = 0.0
@@ -74,7 +100,7 @@ def scalar_Pj(dim,solve:SolveManager,post:PostProcessManager,current_iter, relax
                                 + t_coefficient[i, j, k, mesh_coefficient.ABRC_ID.value] \
                         )
                     if dim == 3:
-                        t_new = t_new - t_coefficient[i, j, k, mesh_coefficient.AT_ID.value] * tt - t_coefficient[i, j, k, mesh_coefficient.aB_id.value] * tb
+                        t_new = t_new - t_coefficient[i, j, k, mesh_coefficient.AT_ID.value] * tt - t_coefficient[i, j, k, mesh_coefficient.AB_ID.value] * tb
                     t_new = t_new / t_coefficient[i, j, k, mesh_coefficient.AP_ID.value]
                     du = relax_factor * (t_new - t_old[i, j, k])
                     t[i, j, k] = t_old[i, j, k] + du
@@ -89,7 +115,7 @@ def scalar_Pj(dim,solve:SolveManager,post:PostProcessManager,current_iter, relax
         max_norm = max(norm2, max_norm) + 1.e-20
         rel_norm = norm2 / max_norm
 
-        if rel_norm < solve_equation_tolerance or equation_current_iter == solve_equation_step_count:
+        if rel_norm < residual_error or equation_current_iter == solve_equation_step_count:
             solve.solve_equation_total_count = solve.solve_equation_total_count + equation_current_iter
             if current_iter % save_residual_frequency == 0 or current_iter == 1 or current_iter == iter_step_count:
                 print('current_iter, equation_current_iter, total_linsol_iters, norm2, initial_norm, max_norm, rel_norm ', current_iter, equation_current_iter, solve.solve_equation_total_count, norm2,
