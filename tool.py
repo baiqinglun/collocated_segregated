@@ -16,7 +16,7 @@ def calculate_area_volume(dx, dy, dz):
     return area_x, area_y, area_z, volume
 
 # 格式
-def calculate_face_coefficient(scheme,area, dx, ul, ur, mul, mur, rho, sign_f):
+def calculate_face_coefficient(scheme,area, idx, ul, ur, mul, mur, rho, sign_f):
     '''
     dx -------> x单元大小
     ul -------> 左边速度
@@ -27,8 +27,7 @@ def calculate_face_coefficient(scheme,area, dx, ul, ur, mul, mur, rho, sign_f):
     sign_f ---> -1 或者 1
     '''
     f = rho * Fp(0.5) * (ul + ur)
-    d = Fp(2.0) * mul * mur / (mul + mur + Fp(1.e-12)) / dx
-    a = None
+    d = Fp(2.0) * mul * mur / (mul + mur + Fp(1.e-12)) * idx
     if scheme == DiscreteScheme.UPWIND:
         # Upwind
         a = area * (d + max(Fp(0.0), sign_f * f))

@@ -44,20 +44,20 @@ class MeshManager:
     def create_coordinates(self, coordinate_range):
         '''创建坐标轴'''
         self.coordinate_range = coordinate_range
-        self.dx = (self.coordinate_range[1] - self.coordinate_range[0]) / self.n_x_cell
-        self.dy = (self.coordinate_range[3] - self.coordinate_range[2]) / self.n_y_cell
-        self.dz = (self.coordinate_range[5] - self.coordinate_range[4]) / self.n_z_cell
+        self.dx = (self.coordinate_range[1] - self.coordinate_range[0]) / float(self.n_x_cell)
+        self.dy = (self.coordinate_range[3] - self.coordinate_range[2]) / float(self.n_y_cell)
+        self.dz = (self.coordinate_range[5] - self.coordinate_range[4]) / float(self.n_z_cell)
 
         # 坐标轴
         self.x = np.zeros(self.n_x_point, dtype=Fp)
         self.y = np.zeros(self.n_y_point, dtype=Fp)
         self.z = np.zeros(self.n_z_point, dtype=Fp)
         for i in range(self.n_x_point):
-            self.x[i] = self.coordinate_range[0] + self.dx * Fp(i)
+            self.x[i] = self.coordinate_range[0] + self.dx * float(i)
         for i in range(self.n_y_point):
-            self.y[i] = self.coordinate_range[2] + self.dy * Fp(i)
+            self.y[i] = self.coordinate_range[2] + self.dy * float(i)
         for i in range(self.n_z_point):
-            self.z[i] = self.coordinate_range[4] + self.dz * Fp(i)
+            self.z[i] = self.coordinate_range[4] + self.dz * float(i)
 
         # 坐标轴质心坐标
         self.x_cell_centroid = np.zeros(self.n_x_cell, dtype=Fp)

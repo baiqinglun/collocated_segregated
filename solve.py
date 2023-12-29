@@ -26,21 +26,28 @@ class PVCouplingScheme(Enum):
     SIMPLE = 0
     SIMPLEC = 1
 
+class SolverEquationStep(Enum):
+    '''迭代求解方程使用的方法'''
+    PJ = 0
+    GS = 1
+
 class SolveManager:
     """求解相关的设置"""
     def __init__(self):
-        self.solve_equation_count:int = None
+        self.solve_equation_count = None
         self.dt = Fp(1.0)
         self.is_finish = False
 
         self.equation_type = EquationType.DIFFUSION_CONVECTION
+        self.pv_coupling_scheme = PVCouplingScheme.SIMPLE
+        self.solver_equation_step = SolverEquationStep.PJ
         self.solve_equation_step_count = 10
         self.solve_equation_tolerance = Fp(1.e-1)
         self.solve_equation_total_count = 0
 
         # 离散格式
-        self.diffusion_scheme = DiscreteScheme.CD # 对流
-        self.conduction_scheme = DiscreteScheme.CD # 扩散
+        self.diffusion_scheme = DiscreteScheme.CD # 扩散
+        self.conduction_scheme = DiscreteScheme.UPWIND # 对流
 
         # 迭代步数
         self.iter_step_count  = 100
@@ -87,21 +94,35 @@ class SolveManager:
         '''设置时间步长'''
         self.dt = dt
 
-    def set_relax_factor(self,relax_factor):
-        '''设置松弛因子'''
-        self.relax_factor_p = relax_factor
-        self.relax_factor_t = relax_factor
-        self.relax_factor_u = relax_factor
-        self.relax_factor_v = relax_factor
-        self.relax_factor_w = relax_factor
+    def set_relax_factor(self,relax_factor_p,relax_factor_t,relax_factor_u,relax_factor_v,relax_factor_w):
+        '''设置松弛因子:p,t,u,v,w'''
+        self.relax_factor_p = relax_factor_p
+        self.relax_factor_t = relax_factor_t
+        self.relax_factor_u = relax_factor_u
+        self.relax_factor_v = relax_factor_v
+        self.relax_factor_w = relax_factor_w
+
+    def set_residual_error(self,residual_error_p,residual_error_t,residual_error_u,residual_error_v,residual_error_w):
+        '''设置残差:p,t,u,v,w'''
+        self.residual_error_p = residual_error_p
+        self.residual_error_t = residual_error_t
+        self.residual_error_u = residual_error_u
+        self.residual_error_v = residual_error_v
+        self.residual_error_w = residual_error_w
 
     def set_is_finish(self,is_finish):
         '''模拟是否完成'''
         self.is_finish = is_finish
 
-    def set_iter_step_count(self,iter_step_count):
-        '''设置总迭代步数'''
+    def set_iter_step_count(self,iter_step_count,iter_step_count_p,iter_step_count_t,\
+                            iter_step_count_u,iter_step_count_v,iter_step_count_w):
+        '''设置总迭代步数:p,t,u,v,w'''
         self.iter_step_count = iter_step_count
+        self.iter_step_count_p = iter_step_count_p
+        self.iter_step_count_t = iter_step_count_t
+        self.iter_step_count_u = iter_step_count_u
+        self.iter_step_count_v = iter_step_count_v
+        self.iter_step_count_w = iter_step_count_w
 
     def set_solve_equation_step_count(self,solve_equation_step_count):
         '''设置方程迭代步数'''
@@ -110,14 +131,6 @@ class SolveManager:
     def set_solve_equation_tolerance(self,solve_equation_tolerance):
         '''设置方程求解容差'''
         self.solve_equation_tolerance = solve_equation_tolerance
-
-    def set_residual_error(self,residual_error):
-        '''设置残差'''
-        self.residual_error_p = residual_error
-        self.residual_error_t = residual_error
-        self.residual_error_u = residual_error
-        self.residual_error_v = residual_error
-        self.residual_error_w = residual_error
 
     def set_solve_equation_count(self, solve_equation_count):
         '''设置方程数量'''
@@ -134,3 +147,7 @@ class SolveManager:
     def set_equation_type(self,equation_type):
         '''设置方程类型'''
         self.equation_type = equation_type
+
+    def set_mass_total(self,mass_total):
+        '''设置mass_total'''
+        self.mass_total = mass_total

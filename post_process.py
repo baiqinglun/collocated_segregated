@@ -70,7 +70,7 @@ class PostProcessManager:
         self.save_output_frequency = output_frequency
 
     def set_frequency(self, save_residual_frequency, output_frequency):
-        '''设置频率'''
+        '''设置残差频率、输出频率'''
         self.save_residual_frequency = save_residual_frequency
         self.save_output_frequency = output_frequency
 
@@ -182,8 +182,7 @@ class PostProcessManager:
             n_cell = (n_x_point - 1) * (n_y_point - 1) * (n_z_point - 1)
             vtk_fid.write(f"CELL_DATA {n_cell}\n")
 
-            vtk_fid.write('{:s}'.format("FIELD FieldData 1\n"))  # {:s}格式化字符串的占位符
-
+            vtk_fid.write('{:s}'.format("FIELD FieldData 3\n"))  # {:s}格式化字符串的占位符
             for var in ['u','v','w']:
                 vtk_fid.write(f"{var} 1 {n_cell} float\n")
                 var_arr = np.ravel(eval(f"{var}")[:, :, :], order='F')  # 将多维数组转化为一维数组，且不会产生源数据的副本

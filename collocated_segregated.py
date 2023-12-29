@@ -90,7 +90,6 @@ class CollocatedSegregated:
         self.solve = solve
         self.dt = solve.dt
         self.equation_type = solve.equation_type #用到的方程
-        self.solve_equation_step_count = solve.solve_equation_step_count
         self.solve_equation_tolerance = solve.solve_equation_tolerance
         self.solve_equation_count = solve.solve_equation_count
         self.is_finish = solve.is_finish
@@ -109,6 +108,11 @@ class CollocatedSegregated:
         self.mass_total = solve.mass_total
         self.temperature_total = solve.temperature_total
         self.iter_step_count = solve.iter_step_count
+        self.iter_step_count_t = solve.iter_step_count_t
+        self.iter_step_count_p = solve.iter_step_count_p
+        self.iter_step_count_u = solve.iter_step_count_u
+        self.iter_step_count_v = solve.iter_step_count_v
+        self.iter_step_count_w = solve.iter_step_count_w
 
         # 边界条件相关
         self.p_outlet = boundary.p_outlet
@@ -154,8 +158,7 @@ class CollocatedSegregated:
                                      self.n_x_cell, self.n_y_cell, self.n_z_cell,
                                      self.dt, self.specific_heat_capacity, self.conductivity_coefficient,
                                      self.source_term,
-                                     self.density, self.t, self.u, self.v, self.w, self.solve.conduction_scheme)
-
+                                     self.density, self.t, self.u, self.v, self.w, self.solve.diffusion_scheme)
         # 再考虑边界条件
         modify_diffusion_boundary_coefficient(self.x_cell_centroid, self.y_cell_centroid, self.z_cell_centroid, \
                                               self.face_boundary, self.face_id,\
@@ -167,12 +170,13 @@ class CollocatedSegregated:
         # 是否初始化为0
         init_zero = False
         old_t = np.copy(self.t)
-        scalar_Pj(self.dim, self.solve, self.post, current_iter, self.relax_factor_t, self.n_x_cell, self.n_y_cell,
+        scalar_Pj(self.dim, self.solve, self.post, current_iter,self.iter_step_count_t, self.relax_factor_t, self.n_x_cell, self.n_y_cell,
                   self.n_z_cell, self.t_coefficient, self.t, init_zero, self.mesh_coefficient,self.residual_error_t)
         # 计算旧温度和新温度的误差
         (self.solve.l2_t, self.solve.l2_max_t) = eqn_scalar_norm2(self.solve, self.dim, current_iter, self.n_x_cell,
                                                                   self.n_y_cell, self.n_z_cell, old_t, self.t,
                                                                   'temperature')
+        
         if self.solve.l2_t / self.solve.l2_max_t < self.residual_error_t:
             self.solve.is_finish = True
             print('')
@@ -195,7 +199,7 @@ class CollocatedSegregated:
                                           self.n_x_cell, self.n_y_cell, self.n_z_cell,
                                           self.dt, self.specific_heat_capacity, self.conductivity_coefficient,
                                           self.source_term,
-                                          self.density, self.t, self.u, self.v, self.w, self.conduction_scheme)
+                                          self.density, self.t, self.u, self.v, self.w, self.diffusion_scheme)
         # 再考虑边界条件
         modify_conduction_boundary_coefficient(self.x_cell_centroid, self.y_cell_centroid, self.z_cell_centroid,
                                                      self.face_boundary, self.face_id, self.dim, self.n_x_cell,
@@ -208,7 +212,7 @@ class CollocatedSegregated:
         # 是否初始化为0
         init_zero = False
         old_t = np.copy(self.t)
-        scalar_Pj(self.dim, self.solve, self.post, current_iter, self.relax_factor_t, self.n_x_cell, self.n_y_cell,
+        scalar_Pj(self.dim, self.solve, self.post, current_iter,self.iter_step_count_t, self.relax_factor_t, self.n_x_cell, self.n_y_cell,
                   self.n_z_cell, self.t_coefficient, self.t, init_zero, self.mesh_coefficient,self.residual_error_t)
         # 计算旧温度和新温度的误差
         (self.solve.l2_t, self.solve.l2_max_t) = eqn_scalar_norm2(self.solve, self.dim, current_iter, self.n_x_cell,
@@ -224,14 +228,21 @@ class CollocatedSegregated:
 
     def solve_conduction_flow(self,current_iter):
         '''求解对流扩散'''
+        np.copyto(self.old_p, self.p)
+        np.copyto(self.old_u, self.u)
+        np.copyto(self.old_v, self.v)
+        np.copyto(self.old_w, self.w)
+        if self.dim == 3:
+            np.copyto(self.old_w, self.w)
+
         solve_velocity_boundary(self.dim,self.uf,self.vf,self.wf,self.u,self.v,self.w,self.face_id,self.face_boundary,\
                             self.n_x_cell,self.n_y_cell,self.n_z_cell,self.physics_boundary_condition,\
                             self.velocity_boundary_condition)
+        
         solve_momentum_coefficient(self.dim,self.dx,self.dy,self.dz,self.dt,self.conduction_scheme,\
                                self.mesh_coefficient,self.u_coefficient,self.v_coefficient,\
                                self.w_coefficient,self.n_x_cell,self.n_y_cell,self.n_z_cell,\
-                               self.density,self.conductivity_coefficient,self.uf,self.vf,self.wf,self.u,self.v,self.w)
-        
+                               self.density,self.mu,self.uf,self.vf,self.wf,self.u,self.v,self.w)
         modify_momentum_boundary_coefficient(self.dim,self.n_x_cell,self.n_y_cell,self.n_z_cell,\
                                          self.face_id,self.physics_boundary_condition,\
                                          self.velocity_boundary_condition,self.face_boundary,\
@@ -239,50 +250,50 @@ class CollocatedSegregated:
         modify_momentum_boundary_coefficient(self.dim,self.n_x_cell,self.n_y_cell,self.n_z_cell,\
                                          self.face_id,self.physics_boundary_condition,\
                                          self.velocity_boundary_condition,self.face_boundary,\
-                                         self.u_coefficient,self.mesh_coefficient,Direction.Y)
+                                         self.v_coefficient,self.mesh_coefficient,Direction.Y)
         if self.dim == 3:
             modify_momentum_boundary_coefficient(self.dim,self.n_x_cell,self.n_y_cell,self.n_z_cell,\
                                             self.face_id,self.physics_boundary_condition,\
                                             self.velocity_boundary_condition,self.face_boundary,\
-                                            self.u_coefficient,self.mesh_coefficient,Direction.Z)
+                                            self.w_coefficient,self.mesh_coefficient,Direction.Z)
         
         solve_momentum_gradp(self.dim,self.p_outlet,self.p,self.face_boundary,self.face_id,self.physics_boundary_condition,\
                          self.mesh_coefficient,self.n_x_cell,self.n_y_cell,self.n_z_cell,\
                          self.dx,self.dy,self.dz,self.u_coefficient,self.v_coefficient,self.w_coefficient)
         
+        
         init_zero = False
-        scalar_Pj(self.dim, self.solve, self.post, current_iter, self.relax_factor_u, self.n_x_cell, self.n_y_cell,
+        scalar_Pj(self.dim, self.solve, self.post, current_iter, self.iter_step_count_u,self.relax_factor_u, self.n_x_cell, self.n_y_cell,
                   self.n_z_cell, self.u_coefficient, self.u, init_zero, self.mesh_coefficient,self.residual_error_u)
-        scalar_Pj(self.dim, self.solve, self.post, current_iter, self.relax_factor_v, self.n_x_cell, self.n_y_cell,
+        scalar_Pj(self.dim, self.solve, self.post, current_iter, self.iter_step_count_v,self.relax_factor_v, self.n_x_cell, self.n_y_cell,
                   self.n_z_cell, self.v_coefficient, self.v, init_zero, self.mesh_coefficient,self.residual_error_v)
         if self.dim == 3:
-            scalar_Pj(self.dim, self.solve, self.post, current_iter, self.relax_factor_w, self.n_x_cell, self.n_y_cell,
+            scalar_Pj(self.dim, self.solve, self.post, current_iter, self.iter_step_count_w,self.relax_factor_w, self.n_x_cell, self.n_y_cell,
                   self.n_z_cell, self.w_coefficient, self.w, init_zero, self.mesh_coefficient,self.residual_error_w)
 
-
+        
         rhie_chow_face_velocity(self.dim,self.old_u,self.old_v,self.old_w,self.n_x_cell,self.n_y_cell,self.n_z_cell,\
                                 self.dx,self.dy,self.dz,self.u,self.v,self.w,self.uf,self.vf,self.wf,\
                                 self.p,self.u_coefficient,self.v_coefficient,self.w_coefficient,self.density,self.dt,\
                                 self.face_boundary,self.face_id,self.mesh_coefficient,self.p_outlet,self.physics_boundary_condition)
-        
         solve_velocity_boundary(self.dim,self.uf,self.vf,self.wf,self.u,self.v,self.w,self.face_id,self.face_boundary,\
                             self.n_x_cell,self.n_y_cell,self.n_z_cell,self.physics_boundary_condition,\
                             self.velocity_boundary_condition)
-
+        
         solve_pressure_coefficient(self.dim,self.n_x_cell,self.n_y_cell,self.n_z_cell,self.dx,self.dy,self.dz,\
                                self.physics_boundary_condition,self.face_boundary,self.face_id,\
                                self.u_coefficient,self.v_coefficient,self.w_coefficient,self.density,\
                                self.mesh_coefficient,self.uf,self.vf,self.wf,self.p_coefficient)
-        
-        scalar_Pj(self.dim, self.solve, self.post, current_iter, self.relax_factor_p, self.n_x_cell, self.n_y_cell,
-                  self.n_z_cell, self.p_coefficient, self.p, init_zero, self.mesh_coefficient,self.residual_error_p)
-        
+
+        init_zero = True
+        scalar_Pj(self.dim, self.solve, self.post, current_iter,self.iter_step_count_p, self.relax_factor_p, self.n_x_cell, self.n_y_cell,
+                  self.n_z_cell, self.p_coefficient, self.pp, init_zero, self.mesh_coefficient,self.residual_error_p)
         (self.solve.l2_pp, self.solve.l2_max_pp) = eqn_scalar_norm2_p(self.solve, self.dim, current_iter,\
                                                                        self.n_x_cell, self.n_y_cell, self.n_z_cell,\
                                                                         self.p_coefficient,self.mesh_coefficient, 'p_coefficient')
-
+        
         correct_pressure(self.n_x_cell, self.n_y_cell,self.n_z_cell, self.relax_factor_p, self.pp, self.p)
-
+        
         correct_velocity(self.dim,self.pp_outlet,self.dx,self.dy,self.dz,self.n_x_cell,self.n_y_cell,self.n_z_cell,\
                         self.u,self.v,self.w,self.uf,self.vf,self.wf,self.u_coefficient,self.v_coefficient,self.w_coefficient,\
                         self.mesh_coefficient,self.face_id,self.face_boundary,self.physics_boundary_condition,\
@@ -295,24 +306,25 @@ class CollocatedSegregated:
                                                                   self.n_x_cell, self.n_y_cell, self.n_z_cell,\
                                                                   self.v,self.old_v, 'v')
         if self.dim == 3:
-            (self.solve.l2_v, self.solve.l2_max_v) = eqn_scalar_norm2(self.solve, self.dim, current_iter,\
+            (self.solve.l2_w, self.solve.l2_max_w) = eqn_scalar_norm2(self.solve, self.dim, current_iter,\
                                                                   self.n_x_cell, self.n_y_cell, self.n_z_cell,\
                                                                   self.w,self.old_w, 'w')
+        (self.solve.l2_p, self.solve.l2_max_p) = eqn_scalar_norm2(self.solve, self.dim, current_iter,\
+                                                                  self.n_x_cell, self.n_y_cell, self.n_z_cell,\
+                                                                  self.p,self.old_p, 'p')
+        # if ((self.solve.l2_u/self.solve.l2_max_u < self.mass_total) and (self.solve.l2_v/self.solve.l2_max_v < self.mass_total)\
+        #      and (self.solve.l2_w/self.solve.l2_max_w < self.mass_total) and (self.solve.l2_p/self.solve.l2_max_p < self.mass_total) or \
+        #    (self.solve.l2_pp/self.solve.l2_max_pp < self.mass_total)):
+        #     self.solve.is_finish = True
+        #     print('')
+        #     print('----------------------------')
+        #     print('Final iter =', current_iter)
+        #     print('it, l2_u/l2_max_u, l2_v/l2_max_v, l2_w/l2_max_w, l2_p/l2_max_p, l2_pp/l2_max_pp', \
+        #            current_iter,self.solve.l2_u/self.solve.l2_max_u, self.solve.l2_v/self.solve.l2_max_v,\
+        #             self.solve.l2_w/self.solve.l2_max_w, self.solve.l2_p/self.solve.l2_max_p, \
+        #                self.solve.l2_pp/self.solve.l2_max_pp)
+        #     print('----------------------------')
 
-        if (self.solve.l2_u/self.solve.l2_max_u < self.mass_total and self.solve.l2_v/self.solve.l2_max_v < self.mass_total and \
-           self.solve.l2_w/self.solve.l2_max_w < self.mass_total and self.solve.l2_p/self.solve.l2_max_p < self.mass_total) or \
-           (self.solve.l2_pp/self.solve.l2_max_pp < self.mass_total):
-            self.solve.is_finish = True
-            print('')
-            print('----------------------------')
-            print('Final iter =', current_iter)
-            print('it, l2_u/l2_max_u, l2_v/l2_max_v, l2_w/l2_max_w, l2_p/l2_max_p, l2_pp/l2_max_pp', \
-                   current_iter,self.solve.l2_u/self.solve.l2_max_u, self.solve.l2_v/self.solve.l2_max_v,\
-                    self.solve.l2_w/self.solve.l2_max_w, self.solve.l2_p/self.solve.l2_max_p, \
-                       self.solve.l2_pp/self.solve.l2_max_pp)
-            print('----------------------------')
- 
-    
     def circulate(self):
         '''
         循环计算
@@ -327,8 +339,8 @@ class CollocatedSegregated:
                     print('---------------------------')
                     print('Begin iter = ', current_iter)
                     print('---------------------------')
+                self.solve_diffusion(current_iter)
                 solve_function(current_iter)
-                self.solve_convection(current_iter)
                 # 每隔多少步保存文件
                 if current_iter % self.post.save_output_frequency == 0 or current_iter == self.iter_step_count or self.solve.is_finish:
                     self.post.write_pressure_vtk_file(self.mesh, self.case)
@@ -336,14 +348,14 @@ class CollocatedSegregated:
                     self.post.write_temperature_vtk_file(self.mesh, self.case)
                     self.post.write_dat_file(self.mesh, self.case)
                 # 输出残差文件并绘制残差
-                if current_iter == 2 or current_iter % self.save_output_frequency == 0 or current_iter == self.iter_step_count or self.solve.is_finish:
-                    print('it, total time, l2_t/l2_max_t', current_iter, time.perf_counter() - self.post.start_time,
-                          self.solve.l2_t / self.solve.l2_max_t)
+                # if current_iter == 2 or current_iter % self.save_output_frequency == 0 or current_iter == self.iter_step_count or self.solve.is_finish:
+                #     print('it, total time, l2_t/l2_max_t', current_iter, time.perf_counter() - self.post.start_time,
+                #           self.solve.l2_t / self.solve.l2_max_t)
 
-                    with open(f"{self.output_folder}/{self.post.nonlinear_equation_residual_filename}",
-                              'a',encoding="utf-8") as nonlinear_equation_residual_filename_id:  # 追加模式
-                        nonlinear_equation_residual_filename_id.write(
-                            f"{current_iter} {time.perf_counter() - self.post.start_time} {self.solve.l2_t / self.solve.l2_max_t}\n")
+                #     with open(f"{self.output_folder}/{self.post.nonlinear_equation_residual_filename}",
+                #               'a',encoding="utf-8") as nonlinear_equation_residual_filename_id:  # 追加模式
+                #         nonlinear_equation_residual_filename_id.write(
+                #             f"{current_iter} {time.perf_counter() - self.post.start_time} {self.solve.l2_t / self.solve.l2_max_t}\n")
                 
                 if self.drawer:
                     self.drawer.draw(time.perf_counter() - self.post.start_time,

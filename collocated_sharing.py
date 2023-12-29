@@ -20,7 +20,9 @@ def solve_diffusion_coefficient(dx, dy, dz, t_coefficient, mesh_coefficient, dim
     '''求解热扩散系数'''
     # 获取Cell的面积和体积
     area_x, area_y, area_z, vol = calculate_area_volume(dx, dy, dz)
-
+    idx = Fp(1.0)/dx
+    idy = Fp(1.0)/dy
+    idz = Fp(1.0)/dz
     for k in range(n_z_cell):
         for j in range(n_y_cell):
             for i in range(n_x_cell):
@@ -51,32 +53,32 @@ def solve_diffusion_coefficient(dx, dy, dz, t_coefficient, mesh_coefficient, dim
                     rho = density[i, j, k]
                 else:
                     rho = Fp(0.5) * (density[i, j, k] + density[i + 1, j, k])
-                a_e = calculate_face_coefficient(area_x, dx, vuw["ul"], vuw["ur"], mu["mul"], mu["mur"],
-                                                 rho, -Fp(1.0), conv_scheme)
+                a_e = calculate_face_coefficient(conv_scheme,area_x, idx, vuw["ul"], vuw["ur"], mu["mul"], mu["mur"],
+                                                 rho, -Fp(1.0))
 
                 # west face
                 if i == 0:
                     rho = density[i, j, k]
                 else:
                     rho = Fp(0.5) * (density[i, j, k] + density[i - 1, j, k])
-                a_w = calculate_face_coefficient(area_x, dx, vuw["ul"], vuw["ur"], mu["mul"], mu["mur"],
-                                                 rho, Fp(1.0), conv_scheme)
+                a_w = calculate_face_coefficient(conv_scheme,area_x, idx, vuw["ul"], vuw["ur"], mu["mul"], mu["mur"],
+                                                 rho, Fp(1.0))
 
                 # north face
                 if j == n_y_cell - 1:
                     rho = density[i, j, k]
                 else:
                     rho = Fp(0.5) * (density[i, j, k] + density[i, j + 1, k])
-                a_n = calculate_face_coefficient(area_y, dy, vuw["vl"], vuw["vr"], mu["mul"], mu["mur"],
-                                                 rho, -Fp(1.0), conv_scheme)
+                a_n = calculate_face_coefficient(conv_scheme,area_y, idy, vuw["vl"], vuw["vr"], mu["mul"], mu["mur"],
+                                                 rho, -Fp(1.0))
 
                 # south face
                 if j == 0:
                     rho = density[i, j, k]
                 else:
                     rho = Fp(0.5) * (density[i, j, k] + density[i, j - 1, k])
-                a_s = calculate_face_coefficient(area_y, dy, vuw["vl"], vuw["vr"], mu["mul"], mu["mur"],
-                                                 rho, Fp(1.0), conv_scheme)
+                a_s = calculate_face_coefficient(conv_scheme,area_y, idy, vuw["vl"], vuw["vr"], mu["mul"], mu["mur"],
+                                                 rho, Fp(1.0))
 
                 if dim == 3:
                     # top face
@@ -84,27 +86,28 @@ def solve_diffusion_coefficient(dx, dy, dz, t_coefficient, mesh_coefficient, dim
                         rho = density[i, j, k]
                     else:
                         rho = Fp(0.5) * (density[i, j, k] + density[i, j, k + 1])
-                    a_t = calculate_face_coefficient(area_z, dz, vuw["wl"], vuw["wr"], mu["mul"],
-                                                     mu["mur"], rho, -Fp(1.0), conv_scheme)
+                    a_t = calculate_face_coefficient(conv_scheme,area_z, idz, vuw["wl"], vuw["wr"], mu["mul"],
+                                                     mu["mur"], rho, -Fp(1.0))
 
                     # bottom face
                     if k == 0:
                         rho = density[i, j, k]
                     else:
                         rho = Fp(0.5) * (density[i, j, k] + density[i, j, k - 1])
-                    a_b = calculate_face_coefficient(area_z, dz, vuw["wl"], vuw["wr"], mu["mul"],
-                                                     mu["mur"], rho, Fp(1.0), conv_scheme)
+                    a_b = calculate_face_coefficient(conv_scheme,area_z, idz, vuw["wl"], vuw["wr"], mu["mul"],
+                                                     mu["mur"], rho, Fp(1.0))
                 # 求解ap系数及源项
                 rho = density[i, j, k]
                 a_p0 = rho * specific_heat_capacity * vol / dt
-                a_p = a_e + a_w + a_s + a_n + a_t + a_b + a_p0 - s_p * vol
-
+                a_p = a_e + a_w + a_s + a_n  + a_p0 - s_p * vol
+                if dim == 3:
+                    a_p += a_t + a_b
                 # 存储数据
                 t_coefficient[i, j, k, mesh_coefficient.AP_ID.value] = a_p
                 t_coefficient[i, j, k, mesh_coefficient.AW_ID.value] = -a_w
                 t_coefficient[i, j, k, mesh_coefficient.AE_ID.value] = -a_e
-                t_coefficient[i, j, k, mesh_coefficient.AS_ID.value] = -a_s
                 t_coefficient[i, j, k, mesh_coefficient.AN_ID.value] = -a_n
+                t_coefficient[i, j, k, mesh_coefficient.AS_ID.value] = -a_s
                 if dim == 3:
                     t_coefficient[i, j, k, mesh_coefficient.AT_ID.value] = -a_t
                     t_coefficient[i, j, k, mesh_coefficient.AB_ID.value] = -a_b
@@ -147,20 +150,20 @@ def modify_diffusion_boundary_coefficient(x_cell_centroid, y_cell_centroid, z_ce
                 # 根据边界条件修改（在原系数基础上修改）每个单元不同面的系数
                 all_coefficient_list = [
                     [face_physics_boundary[0], face_temperature_boundary[0], mesh_coefficient.AE_ID.value,
-                     face_temperature[0], face_temperature[0], x[i + 1], x_cell_centroid[i]],
+                     Fp(face_temperature[0]), Fp(face_temperature[0]), x[i + 1], x_cell_centroid[i]],
                     [face_physics_boundary[1], face_temperature_boundary[1], mesh_coefficient.AW_ID.value,
-                     face_temperature[1], face_temperature[1], x[i], x_cell_centroid[i - 1]],
-                    [face_physics_boundary[2], face_temperature_boundary[2], mesh_coefficient.AS_ID.value,
-                     face_temperature[2], face_temperature[2], y[j + 1], y_cell_centroid[j]],
-                    [face_physics_boundary[3], face_temperature_boundary[3], mesh_coefficient.AN_ID.value,
-                     face_temperature[3], face_temperature[3], y[j], y_cell_centroid[j - 1]]]
+                     Fp(face_temperature[1]), Fp(face_temperature[1]), x[i], x_cell_centroid[i - 1]],
+                    [face_physics_boundary[2], face_temperature_boundary[2], mesh_coefficient.AN_ID.value,
+                     Fp(face_temperature[2]), Fp(face_temperature[2]), y[j + 1], y_cell_centroid[j]],
+                    [face_physics_boundary[3], face_temperature_boundary[3], mesh_coefficient.AS_ID.value,
+                     Fp(face_temperature[3]), Fp(face_temperature[3]), y[j], y_cell_centroid[j - 1]]]
                 if dim == 3:
                     all_coefficient_list.append(
                         [face_physics_boundary[4], face_temperature_boundary[4], mesh_coefficient.AT_ID.value,
-                         face_temperature[4], face_temperature[4], z[k + 1], z_cell_centroid[k]])
+                         Fp(face_temperature[4]), Fp(face_temperature[4]), z[k + 1], z_cell_centroid[k]])
                     all_coefficient_list.append(
                         [face_physics_boundary[5], face_temperature_boundary[5], mesh_coefficient.AB_ID.value,
-                         face_temperature[5], face_temperature[5], z[k], z_cell_centroid[k - 1]])
+                         Fp(face_temperature[5]), Fp(face_temperature[5]), z[k], z_cell_centroid[k - 1]])
                 for value in all_coefficient_list:
                     if value[0] == PhysicsBoundaryID.INLET:
                         t_coefficient[i, j, k, mesh_coefficient.AP_ID.value] -= t_coefficient[i, j, k, value[2]]
@@ -173,7 +176,7 @@ def modify_diffusion_boundary_coefficient(x_cell_centroid, y_cell_centroid, z_ce
                     elif value[0] == PhysicsBoundaryID.WALL:
                         if value[1] == TemperatureBoundaryID.CONSTANT:
                             t_coefficient[i, j, k, mesh_coefficient.AP_ID.value] -= t_coefficient[i, j, k, value[2]]
-                            t_coefficient[i, j, k, mesh_coefficient.ABRC_ID.value] -= Fp(2.0) * t_coefficient[
+                            t_coefficient[i, j, k, mesh_coefficient.ABRC_ID.value] -= Fp(2.0) * t_coefficient[\
                                 i, j, k, value[2]] * value[3]
                             t_coefficient[i, j, k, value[2]] = Fp(0.0)
                         elif value[1] == TemperatureBoundaryID.HEAT_FLUX:
@@ -193,7 +196,9 @@ def solve_conduction_coefficient(dx, dy, dz, t_coefficient, mesh_coefficient, di
     
     '''求解对流项系数'''
     area_x, area_y, area_z, vol = calculate_area_volume(dx, dy, dz)
-
+    idx = Fp(1.0)/dx
+    idy = Fp(1.0)/dy
+    idz = Fp(1.0)/dz
     for k in range(n_z_cell):
         for j in range(n_y_cell):
             for i in range(n_x_cell):
@@ -214,8 +219,8 @@ def solve_conduction_coefficient(dx, dy, dz, t_coefficient, mesh_coefficient, di
                 }
                 # 热传导系数
                 mu = {
-                    "mul": conductivity_coefficient[i,j,k],
-                    "mur": conductivity_coefficient[i,j,k],
+                    "mul": conductivity_coefficient,
+                    "mur": conductivity_coefficient,
                 }
 
                 # -----------------------------5.62、5.63计算每个单元每个面的系数--------------------------------#
@@ -224,7 +229,7 @@ def solve_conduction_coefficient(dx, dy, dz, t_coefficient, mesh_coefficient, di
                     rho = density[i, j, k]
                 else:
                     rho = Fp(0.5) * (density[i, j, k] + density[i + 1, j, k])
-                a_e = calculate_face_coefficient(conv_scheme,area_x, dx, vuw["ul"], vuw["ur"], mu["mul"], mu["mur"],
+                a_e = calculate_face_coefficient(conv_scheme,area_x, idx, vuw["ul"], vuw["ur"], mu["mul"], mu["mur"],
                                                  rho, -Fp(1.0))
 
                 # west face
@@ -232,7 +237,7 @@ def solve_conduction_coefficient(dx, dy, dz, t_coefficient, mesh_coefficient, di
                     rho = density[i, j, k]
                 else:
                     rho = Fp(0.5) * (density[i, j, k] + density[i - 1, j, k])
-                a_w = calculate_face_coefficient(conv_scheme,area_x, dx, vuw["ul"], vuw["ur"], mu["mul"], mu["mur"],
+                a_w = calculate_face_coefficient(conv_scheme,area_x, idx, vuw["ul"], vuw["ur"], mu["mul"], mu["mur"],
                                                  rho, Fp(1.0))
 
                 # north face
@@ -240,7 +245,7 @@ def solve_conduction_coefficient(dx, dy, dz, t_coefficient, mesh_coefficient, di
                     rho = density[i, j, k]
                 else:
                     rho = Fp(0.5) * (density[i, j, k] + density[i, j + 1, k])
-                a_n = calculate_face_coefficient(conv_scheme,area_y, dy, vuw["vl"], vuw["vr"], mu["mul"], mu["mur"],
+                a_n = calculate_face_coefficient(conv_scheme,area_y, idy, vuw["vl"], vuw["vr"], mu["mul"], mu["mur"],
                                                  rho, -Fp(1.0))
 
                 # south face
@@ -248,7 +253,7 @@ def solve_conduction_coefficient(dx, dy, dz, t_coefficient, mesh_coefficient, di
                     rho = density[i, j, k]
                 else:
                     rho = Fp(0.5) * (density[i, j, k] + density[i, j - 1, k])
-                a_s = calculate_face_coefficient(conv_scheme,area_y, dy, vuw["vl"], vuw["vr"], mu["mul"], mu["mur"],
+                a_s = calculate_face_coefficient(conv_scheme,area_y, idy, vuw["vl"], vuw["vr"], mu["mul"], mu["mur"],
                                                  rho, Fp(1.0))
 
                 if dim == 3:
@@ -257,7 +262,7 @@ def solve_conduction_coefficient(dx, dy, dz, t_coefficient, mesh_coefficient, di
                         rho = density[i, j, k]
                     else:
                         rho = Fp(0.5) * (density[i, j, k] + density[i, j, k + 1])
-                    a_t = calculate_face_coefficient(conv_scheme,area_z, dz, vuw["wl"], vuw["wr"], mu["mul"],
+                    a_t = calculate_face_coefficient(conv_scheme,area_z, idz, vuw["wl"], vuw["wr"], mu["mul"],
                                                      mu["mur"], rho, -Fp(1.0))
 
                     # bottom face
@@ -265,7 +270,7 @@ def solve_conduction_coefficient(dx, dy, dz, t_coefficient, mesh_coefficient, di
                         rho = density[i, j, k]
                     else:
                         rho = Fp(0.5) * (density[i, j, k] + density[i, j, k - 1])
-                    a_b = calculate_face_coefficient(conv_scheme,area_z, dz, vuw["wl"], vuw["wr"], mu["mul"],
+                    a_b = calculate_face_coefficient(conv_scheme,area_z, idz, vuw["wl"], vuw["wr"], mu["mul"],
                                                      mu["mur"], rho, Fp(1.0))
                 # 求解ap系数及源项
                 rho = density[i, j, k]
@@ -322,9 +327,9 @@ def modify_conduction_boundary_coefficient(x_cell_centroid, y_cell_centroid, z_c
                      Fp(face_temperature[0]), Fp(face_temperature[0]), x[i + 1], x_cell_centroid[i]],
                     [face_physics_boundary[1], face_temperature_boundary[1], mesh_coefficient.AW_ID.value,
                      Fp(face_temperature[1]), Fp(face_temperature[1]), x[i], x_cell_centroid[i - 1]],
-                    [face_physics_boundary[2], face_temperature_boundary[2], mesh_coefficient.AS_ID.value,
+                    [face_physics_boundary[2], face_temperature_boundary[2], mesh_coefficient.AN_ID.value,
                      Fp(face_temperature[2]), Fp(face_temperature[2]), y[j + 1], y_cell_centroid[j]],
-                    [face_physics_boundary[3], face_temperature_boundary[3], mesh_coefficient.AN_ID.value,
+                    [face_physics_boundary[3], face_temperature_boundary[3], mesh_coefficient.AS_ID.value,
                      Fp(face_temperature[3]), Fp(face_temperature[3]), y[j], y_cell_centroid[j - 1]]]
                 if dim == 3:
                     all_coefficient_list.append(
@@ -385,54 +390,117 @@ def solve_velocity_boundary(dim,uf,vf,wf,u,v,w,face_id,face_boundary,\
     for k in range(n_z_cell):
         for j in range(n_y_cell):
             for i in range(n_x_cell):
-                # 每个单元的faces面的边界条件
-                faces = []
-                enum_face_id_list = list(face_id)
-                if dim == 2:
-                    enum_face_id_list = enum_face_id_list[:4]
-                elif dim == 3:
-                    enum_face_id_list = enum_face_id_list[:6]
-                for enum_face_id in enum_face_id_list:
-                    faces.append(face_boundary[i, j, k, enum_face_id.value])
+                bcid_e = face_boundary[i,j,k,face_id.EAST.value]
+                bcid_w = face_boundary[i,j,k,face_id.WEST.value]
+                bcid_s = face_boundary[i,j,k,face_id.SOUTH.value]
+                bcid_n = face_boundary[i,j,k,face_id.NORTH.value]
 
-                # 定义列表用于存储单元面的速度边界条件、各个分量的速度值、各个分量的速度通量
-                faces_physics_boundary:List[PhysicsBoundaryCondition] = []
-                faces_u:List[Fp] = []
-                faces_v:List[Fp] = []
-                faces_w:List[Fp] = []
-                faces_u_flux:List[Fp] = []
-                faces_v_flux:List[Fp] = []
-                faces_w_flux:List[Fp] = []
-                for face in faces:
-                    faces_physics_boundary.append(physics_boundary_condition[face.value].type)
-                    faces_u.append(velocity_boundary_condition[face.value].u)
-                    faces_v.append(velocity_boundary_condition[face.value].v)
-                    faces_w.append(velocity_boundary_condition[face.value].w)
-                    faces_u_flux.append(velocity_boundary_condition[face.value].u_flux)
-                    faces_v_flux.append(velocity_boundary_condition[face.value].v_flux)
-                    faces_w_flux.append(velocity_boundary_condition[face.value].w_flux)
+                bc_e = physics_boundary_condition[bcid_e.value].type
+                bc_w = physics_boundary_condition[bcid_w.value].type
+                bc_n = physics_boundary_condition[bcid_n.value].type
+                bc_s = physics_boundary_condition[bcid_s.value].type
 
-                # 根据边界条件修改（在原系数基础上修改）每个单元不同面的系数
-                all_coefficient_list = [
-                    [faces_physics_boundary[0],faces_u[0],uf[i+1,j,k],u[i,j,k]],
-                    [faces_physics_boundary[1],faces_u[1],uf[i,j,k],u[i,j,k]],
-                    [faces_physics_boundary[2],faces_v[2],vf[i,j+1,k],v[i,j,k]],
-                    [faces_physics_boundary[3],faces_v[3],vf[i,j,k],v[i,j,k]]]
-                if dim == 3:
-                    all_coefficient_list.append(
-                        [faces_physics_boundary[4],faces_w[4],wf[i,j,k+1],w[i,j,k]])
-                    all_coefficient_list.append(
-                        [faces_physics_boundary[5],faces_w[5],wf[i,j,k],w[i,j,k]])
+                bc_ue = velocity_boundary_condition[bcid_e.value].u
+                bc_ve = velocity_boundary_condition[bcid_e.value].v
+                bc_uw = velocity_boundary_condition[bcid_w.value].u
+                bc_vw = velocity_boundary_condition[bcid_w.value].v
+                bc_un = velocity_boundary_condition[bcid_n.value].u
+                bc_vn = velocity_boundary_condition[bcid_n.value].v
+                bc_us = velocity_boundary_condition[bcid_s.value].u
+                bc_vs = velocity_boundary_condition[bcid_s.value].v
 
-                for value in all_coefficient_list:
-                    if value[0] == PhysicsBoundaryID.INLET:
-                        value[2] = value[1]
-                        mf_in += value[2]
-                    elif value[0] == PhysicsBoundaryID.OUTLET:
-                        value[2] = value[3]
-                        mf_out += value[2]
-                    elif value[0] == PhysicsBoundaryID.WALL:
-                        value[2] = value[1]
+                if bc_e == PhysicsBoundaryID.INLET:
+                    uf[i+1,j,k] = bc_ue
+                    # print('not here')
+                    mf_in = mf_in + uf[i+1,j,k]
+                elif bc_e == PhysicsBoundaryID.OUTLET:
+                    uf[i+1,j,k] = u[i,j,k]
+                    mf_out = mf_out + uf[i+1,j,k]
+                    # print('here')
+                elif bc_e == PhysicsBoundaryID.WALL:
+                    uf[i+1,j,k] = bc_ue
+
+                # West face BC
+                if bc_w == PhysicsBoundaryID.INLET:
+                    uf[i,j,k] = bc_uw
+                    # print('i,j,k,bc_uw ',i,j,k,bc_uw)
+                    mf_in = mf_in + uf[i,j,k]
+                elif bc_w == PhysicsBoundaryID.OUTLET:
+                    uf[i,j,k] = u[i,j,k]
+                    mf_out = mf_out + uf[i,j,k]
+                elif bc_w == PhysicsBoundaryID.WALL:
+                    uf[i,j,k] = bc_uw
+
+                # North face BC
+                if bc_n == PhysicsBoundaryID.INLET:
+                    vf[i,j+1,k] = bc_vn
+                    mf_in = mf_in + vf[i,j+1,k]
+                elif bc_n == PhysicsBoundaryID.OUTLET:
+                    vf[i,j+1,k] = v[i,j,k]
+                    mf_out = mf_out + vf[i,j+1,k]
+                elif bc_n == PhysicsBoundaryID.WALL:
+                    vf[i,j+1,k] = bc_vn
+                    # print('i,j,k,bc_vn ',i,j,k,bc_vn)
+
+                # South face BC
+                if bc_s == PhysicsBoundaryID.INLET:
+                    vf[i,j,k] = bc_vs
+                    mf_in = mf_in + vf[i,j,k]
+                elif bc_s == PhysicsBoundaryID.OUTLET:
+                    vf[i,j,k] = v[i,j,k]
+                    mf_out = mf_out + vf[i,j,k]
+                elif bc_s == PhysicsBoundaryID.WALL:
+                    vf[i,j,k] = bc_vs
+                    # print('i,j,k,bc_vs ',i,j,k,bc_vs)
+
+                # # 每个单元的faces面的边界条件
+                # faces = []
+                # enum_face_id_list = list(face_id)
+                # if dim == 2:
+                #     enum_face_id_list = enum_face_id_list[:4]
+                # elif dim == 3:
+                #     enum_face_id_list = enum_face_id_list[:6]
+                # for enum_face_id in enum_face_id_list:
+                #     faces.append(face_boundary[i, j, k, enum_face_id.value])
+
+                # # 定义列表用于存储单元面的速度边界条件、各个分量的速度值、各个分量的速度通量
+                # faces_physics_boundary:List[PhysicsBoundaryCondition] = []
+                # faces_u:List[Fp] = []
+                # faces_v:List[Fp] = []
+                # faces_w:List[Fp] = []
+                # faces_u_flux:List[Fp] = []
+                # faces_v_flux:List[Fp] = []
+                # faces_w_flux:List[Fp] = []
+                # for face in faces:
+                #     faces_physics_boundary.append(physics_boundary_condition[face.value].type)
+                #     faces_u.append(velocity_boundary_condition[face.value].u)
+                #     faces_v.append(velocity_boundary_condition[face.value].v)
+                #     faces_w.append(velocity_boundary_condition[face.value].w)
+                #     faces_u_flux.append(velocity_boundary_condition[face.value].u_flux)
+                #     faces_v_flux.append(velocity_boundary_condition[face.value].v_flux)
+                #     faces_w_flux.append(velocity_boundary_condition[face.value].w_flux)
+
+                # # 根据边界条件修改（在原系数基础上修改）每个单元不同面的系数
+                # all_coefficient_list = [
+                #     [faces_physics_boundary[0],faces_u[0],uf[i+1,j,k],u[i,j,k]],
+                #     [faces_physics_boundary[1],faces_u[1],uf[i,j,k],u[i,j,k]],
+                #     [faces_physics_boundary[2],faces_v[2],vf[i,j+1,k],v[i,j,k]],
+                #     [faces_physics_boundary[3],faces_v[3],vf[i,j,k],v[i,j,k]]]
+                # if dim == 3:
+                #     all_coefficient_list.append(
+                #         [faces_physics_boundary[4],faces_w[4],wf[i,j,k+1],w[i,j,k]])
+                #     all_coefficient_list.append(
+                #         [faces_physics_boundary[5],faces_w[5],wf[i,j,k],w[i,j,k]])
+
+                # for value in all_coefficient_list:
+                #     if value[0] == PhysicsBoundaryID.INLET:
+                #         value[2] = value[1]
+                #         mf_in += value[2]
+                #     elif value[0] == PhysicsBoundaryID.OUTLET:
+                #         value[2] = value[3]
+                #         mf_out += value[2]
+                #     elif value[0] == PhysicsBoundaryID.WALL:
+                #         value[2] = value[1]
     # QUESTION:不知道什么含义
     for k in range(n_z_cell):
         for j in range(n_y_cell):
@@ -442,106 +510,109 @@ def solve_velocity_boundary(dim,uf,vf,wf,u,v,w,face_id,face_boundary,\
 def solve_momentum_coefficient(dim:int,dx,dy,dz,dt,conduction_scheme,\
                                mesh_coefficient,u_coefficient,v_coefficient,\
                                w_coefficient,n_x_cell,n_y_cell,n_z_cell,\
-                               density,conductivity_coefficient,uf,vf,wf,u,v,w):
+                               density,mu,uf,vf,wf,u,v,w):
     '''求解动量方程系数'''
     idt = Fp(1.0)/dt
     area_x,area_y,area_z,vol = calculate_area_volume(dx, dy, dz)
-
+    idx = Fp(1.0)/dx
+    idy = Fp(1.0)/dy
+    idz = Fp(1.0)/dz
     # 4、循环每个单元求解单元系数
     for k in range(n_z_cell):
         for j in range(n_y_cell):
-            for i in range(n_x_cell):    
+            for i in range(n_x_cell):
                 a_e = Fp(0.0)
                 a_w = Fp(0.0)
                 a_n = Fp(0.0)
                 a_s = Fp(0.0)
-                a_t = Fp(0.0)
-                a_b = Fp(0.0)
+                if dim == 3:
+                    a_t = Fp(0.0)
+                    a_b = Fp(0.0)
                 a_p = Fp(0.0)
                 s_c = Fp(0.0)
                 s_p = Fp(0.0)
                 b_src = Fp(0.0)
-                a_p0 = Fp(0.0)
-
+                
                 # 东边界
                 if(i == n_x_cell-1):
                     rho = density[i,j,k]
-                    mul = conductivity_coefficient[i,j,k]
-                    mur = conductivity_coefficient[i,j,k]
+                    mul = mu[i,j,k]
+                    mur = mu[i,j,k]
                 else:
                     rho = Fp(0.5)*(density[i,j,k]+density[i+1,j,k])
-                    mul = conductivity_coefficient[i,j,k]
-                    mur = conductivity_coefficient[i+1,j,k]
+                    mul = mu[i,j,k]
+                    mur = mu[i+1,j,k]
                 ul = uf[i+1,j,k]
                 ur = uf[i+1,j,k]
-                a_e = calculate_face_coefficient(conduction_scheme, area_x, dx, ul, ur, mul, mur, rho, -Fp(1.0))
-
+                a_e = calculate_face_coefficient(conduction_scheme, area_x, idx, ul, ur, mul, mur, rho, -Fp(1.0))
+                
                 # 西边界
                 if(i == 0):
                     rho = density[i,j,k]
-                    mul = conductivity_coefficient[i,j,k]
-                    mur = conductivity_coefficient[i,j,k]
+                    mul = mu[i,j,k]
+                    mur = mu[i,j,k]
                 else:
                     rho = Fp(0.5)*(density[i,j,k]+density[i-1,j,k])
-                    mul = conductivity_coefficient[i-1,j,k]
-                    mur = conductivity_coefficient[i,j,k]
-                ul = uf[i-1,j,k]
+                    mul = mu[i-1,j,k]
+                    mur = mu[i,j,k]
+                
+                ul = uf[i,j,k]
                 ur = uf[i,j,k]
-                a_w = calculate_face_coefficient(conduction_scheme, area_x, dx, ul, ur, mul, mur, rho, Fp(1.0))
+                # print(conduction_scheme, area_x, dx, ul, ur, mul, mur, rho, Fp(1.0))
+                a_w = calculate_face_coefficient(conduction_scheme, area_x, idx, ul, ur, mul, mur, rho, Fp(1.0))
 
                 # 北边界
                 if(j == n_y_cell - 1):
                     rho = density[i,j,k]
-                    mul = conductivity_coefficient[i,j,k]
-                    mur = conductivity_coefficient[i,j,k]
+                    mul = mu[i,j,k]
+                    mur = mu[i,j,k]
                 else:
                     rho = Fp(0.5)*(density[i,j,k]+density[i,j+1,k])
-                    mul = conductivity_coefficient[i,j,k]
-                    mur = conductivity_coefficient[i,j+1,k]
+                    mul = mu[i,j,k]
+                    mur = mu[i,j+1,k]
                 vl = vf[i,j+1,k]
                 vr = vf[i,j+1,k]
-                a_n = calculate_face_coefficient(conduction_scheme, area_y, dy, vl, vr, mul, mur, rho, -Fp(1.0))
+                a_n = calculate_face_coefficient(conduction_scheme, area_y, idy, vl, vr, mul, mur, rho, -Fp(1.0))
 
                 # 南边界
                 if(j == 0):
                     rho = density[i,j,k]
-                    mul = conductivity_coefficient[i,j,k]
-                    mur = conductivity_coefficient[i,j,k]
+                    mul = mu[i,j,k]
+                    mur = mu[i,j,k]
                 else:
                     rho = Fp(0.5)*(density[i,j,k]+density[i,j-1,k])
-                    mul = conductivity_coefficient[i,j-1,k]
-                    mur = conductivity_coefficient[i,j,k]
+                    mul = mu[i,j-1,k]
+                    mur = mu[i,j,k]
                 vl = vf[i,j,k]
                 vr = vf[i,j,k]
-                a_s = calculate_face_coefficient(conduction_scheme, area_y, dy, vl, vr, mul, mur, rho, Fp(1.0))
+                a_s = calculate_face_coefficient(conduction_scheme, area_y, idy, vl, vr, mul, mur, rho, Fp(1.0))
 
                 if dim == 3:
                     # 上边界
                     if(k == n_z_cell - 1):
                         rho = density[i,j,k]
-                        mul = conductivity_coefficient[i,j,k]
-                        mur = conductivity_coefficient[i,j,k]
+                        mul = mu[i,j,k]
+                        mur = mu[i,j,k]
                     else:
                         rho = Fp(0.5)*(density[i,j,k]+density[i,j,k+1])
-                        mul = conductivity_coefficient[i,j,k]
-                        mur = conductivity_coefficient[i,j,k+1]
+                        mul = mu[i,j,k]
+                        mur = mu[i,j,k+1]
                     wl = wf[i,j,k+1]
                     wr = wf[i,j,k+1]
-                    a_t = calculate_face_coefficient(conduction_scheme, area_z, dz, wl, wr, mul, mur, rho, -Fp(1.0))
+                    a_t = calculate_face_coefficient(conduction_scheme, area_z, idz, wl, wr, mul, mur, rho, -Fp(1.0))
 
                     # 下边界
                     if(k == 0):
                         rho = density[i,j,k]
-                        mul = conductivity_coefficient[i,j,k]
-                        mur = conductivity_coefficient[i,j,k]
+                        mul = mu[i,j,k]
+                        mur = mu[i,j,k]
                     else:
                         rho = Fp(0.5)*(density[i,j,k]+density[i,j,k-1])
-                        mul = conductivity_coefficient[i,j,k-1]
-                        mur = conductivity_coefficient[i,j,k]
+                        mul = mu[i,j,k-1]
+                        mur = mu[i,j,k]
                     wl = wf[i,j,k]
                     wr = wf[i,j,k]
-                    a_b = calculate_face_coefficient(conduction_scheme, area_z, dz, wl, wr, mul, mur, rho, Fp(1.0))
-
+                    a_b = calculate_face_coefficient(conduction_scheme, area_z, idz, wl, wr, mul, mur, rho, Fp(1.0))
                 # 计算系数
                 rho = density[i,j,k]
                 a_p0 = rho*vol*idt
@@ -585,159 +656,102 @@ def solve_momentum_coefficient(dim:int,dx,dy,dz,dt,conduction_scheme,\
 def modify_momentum_boundary_coefficient(dim,n_x_cell,n_y_cell,n_z_cell,\
                                          face_id,physics_boundary_condition,\
                                          velocity_boundary_condition,face_boundary,\
-                                         u_coefficient,mesh_coefficient,direction:Direction):
+                                         coefficient,mesh_coefficient,direction:Direction):
     '''考虑边界条件，修改动量方程系数'''
     for k in range(n_z_cell):
         for j in range(n_y_cell):
             for i in range(n_x_cell):
-                bcid_e = face_boundary[i,j,k,face_id.EAST.value]
-                bcid_w = face_boundary[i,j,k,face_id.WEST.value]
-                bcid_n = face_boundary[i,j,k,face_id.NORTH.value]
-                bcid_s = face_boundary[i,j,k,face_id.SOUTH.value]
-                if dim ==3:
-                    bcid_t = face_boundary[i,j,k,face_id.TOP.value]
-                    bcid_b = face_boundary[i,j,k,face_id.BOTTOM.value]
-                
-                bc_e = physics_boundary_condition[bcid_e.value].type
-                bc_w = physics_boundary_condition[bcid_w.value].type
-                bc_n = physics_boundary_condition[bcid_n.value].type
-                bc_s = physics_boundary_condition[bcid_s.value].type
-                if dim ==3:
-                    bc_t = physics_boundary_condition[bcid_t.value].type
-                    bc_b = physics_boundary_condition[bcid_b.value].type
+                # 存储每个单元的边界
+                faces = []
+                enum_face_id_list = list(face_id)
+                if dim == 2:
+                    enum_face_id_list = enum_face_id_list[:4]
+                elif dim == 3:
+                    enum_face_id_list = enum_face_id_list[:6]
+                for enum_face_id in enum_face_id_list:
+                    faces.append(face_boundary[i, j, k, enum_face_id.value])
 
-                if direction == Direction.X:
-                    bc_ue = velocity_boundary_condition[bcid_e.value].u
-                    bc_uw = velocity_boundary_condition[bcid_w.value].u
-                    bc_un = velocity_boundary_condition[bcid_n.value].u
-                    bc_us = velocity_boundary_condition[bcid_s.value].u
-                    if dim == 3:
-                        bc_ut = velocity_boundary_condition[bcid_t.value].u
-                        bc_ub = velocity_boundary_condition[bcid_b.value].u
-                if direction == Direction.Y:
-                    bc_ue = velocity_boundary_condition[bcid_e.value].v
-                    bc_uw = velocity_boundary_condition[bcid_w.value].v
-                    bc_un = velocity_boundary_condition[bcid_n.value].v
-                    bc_us = velocity_boundary_condition[bcid_s.value].v
-                    if dim == 3:
-                        bc_ut = velocity_boundary_condition[bcid_t.value].v
-                        bc_ub = velocity_boundary_condition[bcid_b.value].v
-                if direction == Direction.Z:
-                    bc_ue = velocity_boundary_condition[bcid_e.value].w
-                    bc_uw = velocity_boundary_condition[bcid_w.value].w
-                    bc_un = velocity_boundary_condition[bcid_n.value].w
-                    bc_us = velocity_boundary_condition[bcid_s.value].w
-                    if dim == 3:
-                        bc_ut = velocity_boundary_condition[bcid_t.value].w
-                        bc_ub = velocity_boundary_condition[bcid_b.value].w
-                
-                # 东面
-                if bc_e == PhysicsBoundaryID.INLET:
-                    u_coefficient[i,j,k,mesh_coefficient.AP_ID.value] -= 2.0*u_coefficient[i,j,k,mesh_coefficient.AE_ID.value]
-                    u_coefficient[i,j,k,mesh_coefficient.AW_ID.value] += u_coefficient[i,j,k,mesh_coefficient.AE_ID.value]/3.0
-                    u_coefficient[i,j,k,mesh_coefficient.ABRC_ID.value] -= 8.0*u_coefficient[i,j,k,mesh_coefficient.AE_ID.value]*bc_ue/3.0
-                    u_coefficient[i,j,k,mesh_coefficient.AE_ID.value]   = 0.0
-                elif bc_e == PhysicsBoundaryID.OUTLET:
-                    u_coefficient[i,j,k,mesh_coefficient.AP_ID.value] += u_coefficient[i,j,k,mesh_coefficient.AE_ID.value]
-                    u_coefficient[i,j,k,mesh_coefficient.AE_ID.value] = 0.0
-                elif bc_e == PhysicsBoundaryID.WALL:                    
-                    u_coefficient[i,j,k,mesh_coefficient.AP_ID.value] -= 2.0*u_coefficient[i,j,k,mesh_coefficient.AE_ID.value]
-                    u_coefficient[i,j,k,mesh_coefficient.AW_ID.value] += u_coefficient[i,j,k,mesh_coefficient.AE_ID.value]/3.0
-                    u_coefficient[i,j,k,mesh_coefficient.ABRC_ID.value] -= 8.0*u_coefficient[i,j,k,mesh_coefficient.AE_ID.value]*bc_ue/3.0
-                    u_coefficient[i,j,k,mesh_coefficient.AE_ID.value] = 0.0
-                # 西面
-                if bc_w == PhysicsBoundaryID.INLET:
-                    u_coefficient[i,j,k,mesh_coefficient.AP_ID.value] -= 2.0*u_coefficient[i,j,k,mesh_coefficient.AW_ID.value]
-                    u_coefficient[i,j,k,mesh_coefficient.AE_ID.value] += u_coefficient[i,j,k,mesh_coefficient.AW_ID.value]/3.0
-                    u_coefficient[i,j,k,mesh_coefficient.ABRC_ID.value] -= 8.0*u_coefficient[i,j,k,mesh_coefficient.AW_ID.value]*bc_uw/3.0
-                    u_coefficient[i,j,k,mesh_coefficient.AW_ID.value]   = 0.0
-                elif bc_w == PhysicsBoundaryID.OUTLET:
-                    u_coefficient[i,j,k,mesh_coefficient.AP_ID.value] += u_coefficient[i,j,k,mesh_coefficient.AW_ID.value]
-                    u_coefficient[i,j,k,mesh_coefficient.AW_ID.value] = 0.0
-                elif bc_w == PhysicsBoundaryID.WALL:                    
-                    u_coefficient[i,j,k,mesh_coefficient.AP_ID.value] -= 2.0*u_coefficient[i,j,k,mesh_coefficient.AW_ID.value]
-                    u_coefficient[i,j,k,mesh_coefficient.AE_ID.value] += u_coefficient[i,j,k,mesh_coefficient.AW_ID.value]/3.0
-                    u_coefficient[i,j,k,mesh_coefficient.ABRC_ID.value] -= 8.0*u_coefficient[i,j,k,mesh_coefficient.AW_ID.value]*bc_uw/3.0
-                    u_coefficient[i,j,k,mesh_coefficient.AW_ID.value] = 0.0
-                # 北边
-                if bc_n == PhysicsBoundaryID.INLET:
-                    u_coefficient[i,j,k,mesh_coefficient.AP_ID.value] -= 2.0*u_coefficient[i,j,k,mesh_coefficient.AN_ID.value]
-                    u_coefficient[i,j,k,mesh_coefficient.AS_ID.value] += u_coefficient[i,j,k,mesh_coefficient.AN_ID.value]/3.0
-                    u_coefficient[i,j,k,mesh_coefficient.ABRC_ID.value] -= 8.0*u_coefficient[i,j,k,mesh_coefficient.AN_ID.value]*bc_un/3.0
-                    u_coefficient[i,j,k,mesh_coefficient.AN_ID.value]   = 0.0
-                elif bc_n == PhysicsBoundaryID.OUTLET:
-                    u_coefficient[i,j,k,mesh_coefficient.AP_ID.value] += u_coefficient[i,j,k,mesh_coefficient.AN_ID.value]
-                    u_coefficient[i,j,k,mesh_coefficient.AN_ID.value] = 0.0
-                elif bc_n == PhysicsBoundaryID.WALL:                    
-                    u_coefficient[i,j,k,mesh_coefficient.AP_ID.value] -= 2.0*u_coefficient[i,j,k,mesh_coefficient.AN_ID.value]
-                    u_coefficient[i,j,k,mesh_coefficient.AS_ID.value] += u_coefficient[i,j,k,mesh_coefficient.AN_ID.value]/3.0
-                    u_coefficient[i,j,k,mesh_coefficient.ABRC_ID.value] -= 8.0*u_coefficient[i,j,k,mesh_coefficient.AN_ID.value]*bc_un/3.0
-                    u_coefficient[i,j,k,mesh_coefficient.AN_ID.value] = 0.0
-                # 南边
-                if bc_s == PhysicsBoundaryID.INLET:
-                    u_coefficient[i,j,k,mesh_coefficient.AP_ID.value] -= 2.0*u_coefficient[i,j,k,mesh_coefficient.AS_ID.value]
-                    u_coefficient[i,j,k,mesh_coefficient.AN_ID.value] += u_coefficient[i,j,k,mesh_coefficient.AS_ID.value]/3.0
-                    u_coefficient[i,j,k,mesh_coefficient.ABRC_ID.value] -= 8.0*u_coefficient[i,j,k,mesh_coefficient.AS_ID.value]*bc_us/3.0
-                    u_coefficient[i,j,k,mesh_coefficient.AS_ID.value]   = 0.0
-                elif bc_s == PhysicsBoundaryID.OUTLET:
-                    u_coefficient[i,j,k,mesh_coefficient.AP_ID.value] += u_coefficient[i,j,k,mesh_coefficient.AS_ID.value]
-                    u_coefficient[i,j,k,mesh_coefficient.AS_ID.value] = 0.0
-                elif bc_s == PhysicsBoundaryID.WALL:                    
-                    u_coefficient[i,j,k,mesh_coefficient.AP_ID.value] -= 2.0*u_coefficient[i,j,k,mesh_coefficient.AS_ID.value]
-                    u_coefficient[i,j,k,mesh_coefficient.AN_ID.value] += u_coefficient[i,j,k,mesh_coefficient.AS_ID.value]/3.0
-                    u_coefficient[i,j,k,mesh_coefficient.ABRC_ID.value] -= 8.0*u_coefficient[i,j,k,mesh_coefficient.AS_ID.value]*bc_us/3.0
-                    u_coefficient[i,j,k,mesh_coefficient.AS_ID.value] = 0.0
+                # 物理边界类型与值
+                face_physics_boundary = []
+                face_velocity_boundary = []
+                face_velocity = []
+                face_flux = []
+                for face in faces:
+                    face_physics_boundary.append(physics_boundary_condition[face.value].type)
+                    if direction == Direction.X:
+                        face_velocity_boundary.append(velocity_boundary_condition[face.value].u_type)
+                        face_velocity.append(velocity_boundary_condition[face.value].u)
+                        face_flux.append(velocity_boundary_condition[face.value].u_flux)
+                    elif direction == Direction.Y:
+                        face_velocity_boundary.append(velocity_boundary_condition[face.value].v_type)
+                        face_velocity.append(velocity_boundary_condition[face.value].v)
+                        face_flux.append(velocity_boundary_condition[face.value].v_flux)
+                    elif direction == Direction.Z:
+                        face_velocity_boundary.append(velocity_boundary_condition[face.value].w_type)
+                        face_velocity.append(velocity_boundary_condition[face.value].w)
+                        face_flux.append(velocity_boundary_condition[face.value].w_flux)
+
+                # 根据边界条件修改（在原系数基础上修改）每个单元不同面的系数
+                all_coefficient_list = [
+                    [face_physics_boundary[0], face_velocity_boundary[0], Fp(face_velocity[0]),Fp(face_flux[0]), \
+                     mesh_coefficient.AE_ID.value, mesh_coefficient.AW_ID.value,coefficient],
+                    [face_physics_boundary[1], face_velocity_boundary[1], Fp(face_velocity[1]),Fp(face_flux[1]), \
+                     mesh_coefficient.AW_ID.value, mesh_coefficient.AE_ID.value,coefficient],
+                    [face_physics_boundary[2], face_velocity_boundary[2], Fp(face_velocity[2]),Fp(face_flux[2]), \
+                     mesh_coefficient.AN_ID.value, mesh_coefficient.AS_ID.value,coefficient],
+                    [face_physics_boundary[3], face_velocity_boundary[3], Fp(face_velocity[3]),Fp(face_flux[3]), \
+                     mesh_coefficient.AS_ID.value, mesh_coefficient.AN_ID.value,coefficient]]
                 if dim == 3:
-                    # 上边
-                    if bc_t == PhysicsBoundaryID.INLET:
-                        u_coefficient[i,j,k,mesh_coefficient.AP_ID.value] -= 2.0*u_coefficient[i,j,k,mesh_coefficient.AT_ID.value]
-                        u_coefficient[i,j,k,mesh_coefficient.AB_ID.value] += u_coefficient[i,j,k,mesh_coefficient.AT_ID.value]/3.0
-                        u_coefficient[i,j,k,mesh_coefficient.ABRC_ID.value] -= 8.0*u_coefficient[i,j,k,mesh_coefficient.AT_ID.value]*bc_ut/3.0
-                        u_coefficient[i,j,k,mesh_coefficient.AT_ID.value]   = 0.0
-                    elif bc_t == PhysicsBoundaryID.OUTLET:
-                        u_coefficient[i,j,k,mesh_coefficient.AP_ID.value] += u_coefficient[i,j,k,mesh_coefficient.AT_ID.value]
-                        u_coefficient[i,j,k,mesh_coefficient.AT_ID.value] = 0.0
-                    elif bc_t == PhysicsBoundaryID.WALL:                    
-                        u_coefficient[i,j,k,mesh_coefficient.AP_ID.value] -= 2.0*u_coefficient[i,j,k,mesh_coefficient.AT_ID.value]
-                        u_coefficient[i,j,k,mesh_coefficient.AB_ID.value] += u_coefficient[i,j,k,mesh_coefficient.AT_ID.value]/3.0
-                        u_coefficient[i,j,k,mesh_coefficient.ABRC_ID.value] -= 8.0*u_coefficient[i,j,k,mesh_coefficient.AT_ID.value]*bc_ut/3.0
-                        u_coefficient[i,j,k,mesh_coefficient.AT_ID.value] = 0.0
-                    # 下边
-                    if bc_b == PhysicsBoundaryID.INLET:
-                        u_coefficient[i,j,k,mesh_coefficient.AP_ID.value] -= 2.0*u_coefficient[i,j,k,mesh_coefficient.AB_ID.value]
-                        u_coefficient[i,j,k,mesh_coefficient.AT_ID.value] += u_coefficient[i,j,k,mesh_coefficient.AB_ID.value]/3.0
-                        u_coefficient[i,j,k,mesh_coefficient.ABRC_ID.value] -= 8.0*u_coefficient[i,j,k,mesh_coefficient.AB_ID.value]*bc_ub/3.0
-                        u_coefficient[i,j,k,mesh_coefficient.AB_ID.value]   = 0.0
-                    elif bc_b == PhysicsBoundaryID.OUTLET:
-                        u_coefficient[i,j,k,mesh_coefficient.AP_ID.value] += u_coefficient[i,j,k,mesh_coefficient.AB_ID.value]
-                        u_coefficient[i,j,k,mesh_coefficient.AB_ID.value] = 0.0
-                    elif bc_b == PhysicsBoundaryID.WALL:                    
-                        u_coefficient[i,j,k,mesh_coefficient.AP_ID.value] -= 2.0*u_coefficient[i,j,k,mesh_coefficient.AB_ID.value]
-                        u_coefficient[i,j,k,mesh_coefficient.AT_ID.value] += u_coefficient[i,j,k,mesh_coefficient.AB_ID.value]/3.0
-                        u_coefficient[i,j,k,mesh_coefficient.ABRC_ID.value] -= 8.0*u_coefficient[i,j,k,mesh_coefficient.AB_ID.value]*bc_ub/3.0
-                        u_coefficient[i,j,k,mesh_coefficient.AB_ID.value] = 0.0        
+                    all_coefficient_list.append(
+                        [face_physics_boundary[4], face_velocity_boundary[4], Fp(face_velocity[4]),Fp(face_flux[4]), \
+                     mesh_coefficient.AT_ID.value, mesh_coefficient.AB_ID.value,coefficient])
+                    all_coefficient_list.append(
+                        [face_physics_boundary[5], face_velocity_boundary[5], Fp(face_velocity[5]),Fp(face_flux[5]), \
+                     mesh_coefficient.AB_ID.value, mesh_coefficient.AT_ID.value,coefficient])
+                
+                # value[0] : 物理边界条件
+                # value[1] : 速度边界条件
+                # value[2] : 面速度值
+                # value[3] : 面流量值
+                # value[4] : 主系数
+                # value[5] : 副系数
+                # value[6] : 系数矩阵
+                for value in all_coefficient_list:
+                    if value[0] == PhysicsBoundaryID.INLET:
+                        value[6][i,j,k,mesh_coefficient.AP_ID.value] -= 2.0*value[6][i,j,k,value[4]]
+                        value[6][i,j,k,value[5]] += coefficient[i,j,k,value[4]]/3.0
+                        value[6][i,j,k,mesh_coefficient.ABRC_ID.value] -= 8.0*value[6][i,j,k,value[4]]*value[2]/3.0
+                        value[6][i,j,k,value[4]]   = 0.0
+                    elif value[0] == PhysicsBoundaryID.OUTLET:
+                        coefficient[i,j,k,mesh_coefficient.AP_ID.value] += value[6][i,j,k,value[4]]
+                        coefficient[i,j,k,value[4]] = 0.0
+                    elif value[0] == PhysicsBoundaryID.WALL:                    
+                        coefficient[i,j,k,mesh_coefficient.AP_ID.value] -= 2.0*value[6][i,j,k,value[4]]
+                        coefficient[i,j,k,value[5]] += value[6][i,j,k,value[4]]/3.0
+                        coefficient[i,j,k,mesh_coefficient.ABRC_ID.value] -= 8.0*value[6][i,j,k,value[4]]*value[2]/3.0
+                        coefficient[i,j,k,value[4]] = 0.0
 
 def solve_momentum_gradp(dim,p_outlet,p,face_boundary,face_id,physics_boundary_condition,\
                          mesh_coefficient,n_x_cell,n_y_cell,n_z_cell,\
                          dx,dy,dz,u_coefficient,v_coefficient,w_coefficient):
     '''求解动量方程压力梯度'''
     area_x, area_y, area_z, vol = calculate_area_volume(dx, dy, dz)
-
     for k in range(n_z_cell):
         for j in range(n_y_cell):
             for i in range(n_x_cell):
                 bcid_e = face_boundary[i,j,k,face_id.EAST.value]
                 bcid_w = face_boundary[i,j,k,face_id.WEST.value]
-                bcid_n = face_boundary[i,j,k,face_id.NORTH.value]
                 bcid_s = face_boundary[i,j,k,face_id.SOUTH.value]
+                bcid_n = face_boundary[i,j,k,face_id.NORTH.value]
                 if dim ==3:
                     bcid_t = face_boundary[i,j,k,face_id.TOP.value]
                     bcid_b = face_boundary[i,j,k,face_id.BOTTOM.value]
                 
+
                 bc_e = physics_boundary_condition[bcid_e.value].type
                 bc_w = physics_boundary_condition[bcid_w.value].type
-                bc_n = physics_boundary_condition[bcid_n.value].type
                 bc_s = physics_boundary_condition[bcid_s.value].type
+                bc_n = physics_boundary_condition[bcid_n.value].type
                 if dim ==3:
                     bc_t = physics_boundary_condition[bcid_t.value].type
                     bc_b = physics_boundary_condition[bcid_b.value].type
@@ -745,7 +759,7 @@ def solve_momentum_gradp(dim,p_outlet,p,face_boundary,face_id,physics_boundary_c
                 # x方向
                 if bc_e == PhysicsBoundaryID.NONE and bc_w == PhysicsBoundaryID.NONE:
                     # 内部单元
-                    pl = p[i,j,k]
+                    pl = p[i-1,j,k]
                     pr = p[i+1,j,k]
                 else:
                     # 东(右)侧边界
@@ -765,18 +779,11 @@ def solve_momentum_gradp(dim,p_outlet,p,face_boundary,face_id,physics_boundary_c
                 u_coefficient[i,j,k,mesh_coefficient.ABRC_ID.value] = u_coefficient[i,j,k,mesh_coefficient.ABRC_ID.value] + 0.5 * (pl - pr) * area_x
 
                 # y方向
-                if bc_n == PhysicsBoundaryID.NONE and bc_s == PhysicsBoundaryID.NONE:
+                if bc_s == PhysicsBoundaryID.NONE and bc_n == PhysicsBoundaryID.NONE:
                     # 内部单元
                     pl = p[i,j-1,k]
                     pr = p[i,j+1,k]
                 else:
-                    # 北(上)侧边界
-                    if bc_n == PhysicsBoundaryID.INLET or bc_n == PhysicsBoundaryID.WALL:
-                        pl = p[i,j-1,k]
-                        pr = p[i,j,k]
-                    elif bc_n == PhysicsBoundaryID.OUTLET:
-                        pl = p[i,j-1,k]
-                        pr = p_outlet
                     # 南(下)侧边界
                     if bc_s == PhysicsBoundaryID.INLET or bc_s == PhysicsBoundaryID.WALL:
                         pl = p[i,j,k]
@@ -784,6 +791,13 @@ def solve_momentum_gradp(dim,p_outlet,p,face_boundary,face_id,physics_boundary_c
                     elif bc_s == PhysicsBoundaryID.OUTLET:
                         pl = p_outlet
                         pr = p[i,j+1,k]
+                    # 北(上)侧边界
+                    if bc_n == PhysicsBoundaryID.INLET or bc_n == PhysicsBoundaryID.WALL:
+                        pl = p[i,j-1,k]
+                        pr = p[i,j,k]
+                    elif bc_n == PhysicsBoundaryID.OUTLET:
+                        pl = p[i,j-1,k]
+                        pr = p_outlet
                 v_coefficient[i,j,k,mesh_coefficient.ABRC_ID.value] = v_coefficient[i,j,k,mesh_coefficient.ABRC_ID.value] + 0.5 * (pl - pr) * area_y
 
                 if dim == 3:
@@ -815,16 +829,13 @@ def rhie_chow_face_velocity(dim,old_u,old_v,old_w,n_x_cell,n_y_cell,n_z_cell,dx,
     '''使用rhie_chow求解面速度'''
     area_x, area_y, area_z, vol = calculate_area_volume(dx, dy, dz)
     idt = 1.0 / dt
-    old_u = np.copy(u)
-    old_v = np.copy(v)
-    old_w = np.copy(w)
 
     # x面速度
     for k in range(n_z_cell):
         for j in range(n_y_cell):
             for i in range(1,n_x_cell):
                 bcid_e = face_boundary[i,j,k,face_id.EAST.value]
-                bcid_w = face_boundary[i,j,k,face_id.WEST.value]
+                bcid_w = face_boundary[i-1,j,k,face_id.WEST.value]
                 bc_e = physics_boundary_condition[bcid_e.value].type
                 bc_w = physics_boundary_condition[bcid_w.value].type
 
@@ -880,43 +891,42 @@ def rhie_chow_face_velocity(dim,old_u,old_v,old_w,n_x_cell,n_y_cell,n_z_cell,dx,
         for j in range(1,n_y_cell):
             for i in range(n_x_cell):
                 bcid_n = face_boundary[i,j,k,face_id.NORTH.value]
-                bcid_s = face_boundary[i,j,k,face_id.SOUTH.value]
+                bcid_s = face_boundary[i,j-1,k,face_id.SOUTH.value]
                 bc_n = physics_boundary_condition[bcid_n.value].type
                 bc_s = physics_boundary_condition[bcid_s.value].type
 
                 vf_old = vf[i,j,k]
-                pe = p[i,j,k]
-                pw = p[i,j-1,k]
+                pn = p[i,j,k]
+                ps = p[i,j-1,k]
 
                 # Set the pww and pee
                 if j==1:
-                    pww = Fp(0.0)
+                    pss = Fp(0.0)
                 else:
-                    pww = p[i,j-2,k]
+                    pss = p[i,j-2,k]
 
                 if j==n_y_cell-1:
-                    pee = Fp(0.0)
+                    pnn = Fp(0.0)
                 else:
-                    pee = p[i,j+1,k]
+                    pnn = p[i,j+1,k]
 
-                # 西边
+                # 南边
                 if bc_s == PhysicsBoundaryID.INLET or bc_s == PhysicsBoundaryID.WALL:
-                    pww = p[i,j-1,k]
+                    pss = p[i,j-1,k]
                 elif bc_s == PhysicsBoundaryID.OUTLET:
-                    pww = p_outlet
-                # 东边
+                    pss = p_outlet
+                # 北边
                 if bc_n == PhysicsBoundaryID.INLET or bc_n == PhysicsBoundaryID.WALL:
-                    pee = p[i,j,k]
+                    pnn = p[i,j,k]
                 elif bc_n == PhysicsBoundaryID.OUTLET:
-                    pee = p_outlet
+                    pnn = p_outlet
                 
                 # QUESTION:不知道什么含义
-                dpm = (pe-pww) * 0.5
-                dpp = (pee-pw) * 0.5
-                dpf = (pe-pw)
-
+                dpm = (pn-pss) * 0.5
+                dpp = (pnn-ps) * 0.5
+                dpf = (pn-ps)
                 vf[i,j,k] = ( \
-                    (v_coefficient[i,j-1,k,mesh_coefficient.AP_ID.value] * v[i,j-1,k] + v_coefficient[i,j,k,mesh_coefficient.AP_ID.value] * u[i,j,k]) \
+                    (v_coefficient[i,j-1,k,mesh_coefficient.AP_ID.value] * v[i,j-1,k] + v_coefficient[i,j,k,mesh_coefficient.AP_ID.value] * v[i,j,k]) \
                     / (v_coefficient[i,j-1,k,mesh_coefficient.AP_ID.value] + v_coefficient[i,j,k,mesh_coefficient.AP_ID.value]) \
                     + ( \
                           0.5 * dpm / v_coefficient[i,j-1,k,mesh_coefficient.AP_ID.value] \
@@ -937,40 +947,40 @@ def rhie_chow_face_velocity(dim,old_u,old_v,old_w,n_x_cell,n_y_cell,n_z_cell,dx,
             for j in range(n_y_cell):
                 for i in range(n_x_cell):
                     bcid_t = face_boundary[i,j,k,face_id.TOP.value]
-                    bcid_b = face_boundary[i,j,k,face_id.BOTTOM.value]
+                    bcid_b = face_boundary[i,j,k-1,face_id.BOTTOM.value]
                     bc_t = physics_boundary_condition[bcid_t.value].type
                     bc_b = physics_boundary_condition[bcid_b.value].type
 
                     wf_old = wf[i,j,k]
-                    pe = p[i,j,k]
-                    pw = p[i,j,k-1]
+                    pt = p[i,j,k]
+                    pb = p[i,j,k-1]
 
                     # Set the pww and pee
                     if k==1:
-                        pww = Fp(0.0)
+                        pbb = Fp(0.0)
                     else:
-                        pww = p[i,j,k-2]
+                        pbb = p[i,j,k-2]
 
                     if k==n_z_cell-1:
-                        pee = Fp(0.0)
+                        ptt = Fp(0.0)
                     else:
-                        pee = p[i,j,k+1]
+                        ptt = p[i,j,k+1]
 
                     # 上边
                     if bc_t == PhysicsBoundaryID.INLET or bc_t == PhysicsBoundaryID.WALL:
-                        pww = p[i,j,k-1]
+                        ptt = p[i,j,k]
                     elif bc_t == PhysicsBoundaryID.OUTLET:
-                        pww = p_outlet
+                        ptt = p_outlet
                     # 下边
                     if bc_b == PhysicsBoundaryID.INLET or bc_b == PhysicsBoundaryID.WALL:
-                        pee = p[i,j,k]
+                        pbb = p[i,j,k-1]
                     elif bc_b == PhysicsBoundaryID.OUTLET:
-                        pee = p_outlet
+                        pbb = p_outlet
                     
                     # QUESTION:不知道什么含义
-                    dpm = (pe-pww) * 0.5
-                    dpp = (pee-pw) * 0.5
-                    dpf = (pe-pw)
+                    dpm = (pt-pbb) * 0.5
+                    dpp = (ptt-pb) * 0.5
+                    dpf = (pt-pb)
 
                     wf[i,j,k] = ( \
                         (w_coefficient[i,j,k-1,mesh_coefficient.AP_ID.value] * w[i,j,k-1] + w_coefficient[i,j,k,mesh_coefficient.AP_ID.value] * u[i,j,k]) \
@@ -1039,20 +1049,20 @@ def solve_pressure_coefficient(dim,n_x_cell,n_y_cell,n_z_cell,dx,dy,dz,\
                 
                 rho_w = Fp(0.0)
                 rho_e = Fp(0.0)
-                rho_s = Fp(0.0)
                 rho_n = Fp(0.0)
+                rho_s = Fp(0.0)
                 if dim == 3:
                     rho_t = Fp(0.0)
                     rho_b = Fp(0.0)
-                
+
                 # 西边
                 if bc_w != PhysicsBoundaryID.NONE or i == 0:
                     a_w = 0.0
-                    rho_w = density[i,j,k]
+                    rho_w = density[i, j, k]
                 else:
-                    rho_w = 0.5 * (density[i,j,k] + density[i-1,j,k])
-                    a_w = rho_w * area_x * area_x * 0.5 * (1.0 / u_coefficient[i-1,j,k,mesh_coefficient.AP_ID.value] + 1.0 / u_coefficient[i,j,k,mesh_coefficient.AP_ID.value])
-                
+                    rho_w = 0.5 * (density[i, j, k] + density[i - 1, j, k])
+                    a_w = rho_w * area_x * area_x * 0.5 * (1.0 / u_coefficient[i - 1, j, k, mesh_coefficient.AP_ID.value] + 1.0 /u_coefficient[i, j, k, mesh_coefficient.AP_ID.value])
+
                 # 东边
                 if bc_e != PhysicsBoundaryID.NONE or i == n_x_cell - 1:
                     a_e = 0.0
@@ -1060,15 +1070,15 @@ def solve_pressure_coefficient(dim,n_x_cell,n_y_cell,n_z_cell,dx,dy,dz,\
                 else:
                     rho_e = 0.5 * (density[i,j,k] + density[i+1,j,k])
                     a_e = rho_e * area_x * area_x * 0.5 * (1.0 / u_coefficient[i+1,j,k,mesh_coefficient.AP_ID.value] + 1.0 / u_coefficient[i,j,k,mesh_coefficient.AP_ID.value])
-                
+
                 # 南边
                 if bc_s != PhysicsBoundaryID.NONE or j == 0:
                     a_s = 0.0
-                    rho_s = density[i,j,k]
+                    rho_s = density[i, j, k]
                 else:
-                    rho_s = 0.5 * (density[i,j,k] + density[i,j-1,k])
-                    a_s = rho_s * area_y * area_y * 0.5 * (1.0 / v_coefficient[i,j-1,k,mesh_coefficient.AP_ID.value] + 1.0 / v_coefficient[i,j,k,mesh_coefficient.AP_ID.value])
-                
+                    rho_s = 0.5 * (density[i, j, k] + density[i, j - 1, k])
+                    a_s = rho_s * area_y * area_y * 0.5 * (1.0 / v_coefficient[i, j - 1, k, mesh_coefficient.AP_ID.value] + 1.0 / v_coefficient[i, j, k, mesh_coefficient.AP_ID.value])
+
                 # 北边
                 if bc_n != PhysicsBoundaryID.NONE or j == n_y_cell - 1:
                     a_n = 0.0
@@ -1076,7 +1086,7 @@ def solve_pressure_coefficient(dim,n_x_cell,n_y_cell,n_z_cell,dx,dy,dz,\
                 else:
                     rho_n = 0.5 * (density[i,j,k] + density[i,j+1,k])
                     a_n = rho_n * area_y * area_y * 0.5 * (1.0 / v_coefficient[i,j+1,k,mesh_coefficient.AP_ID.value] + 1.0 / v_coefficient[i,j,k,mesh_coefficient.AP_ID.value])
-                
+
                 if dim == 3:
                     # 上边
                     if bc_t != PhysicsBoundaryID.NONE or k == 0:
@@ -1099,13 +1109,13 @@ def solve_pressure_coefficient(dim,n_x_cell,n_y_cell,n_z_cell,dx,dy,dz,\
                     a_p += a_t + a_b
 
                 b_src = (rho_w * uf[i,j,k] - rho_e * uf[i+1,j,k]) * area_x + \
-                       (rho_s * vf[i,j,k] - rho_n * vf[i,j+1,k]) * area_y
+                        (rho_s * vf[i,j,k] - rho_n * vf[i,j+1,k]) * area_y
                 if dim == 3:
                     b_src += (rho_t * wf[i,j,k] - rho_b * wf[i,j,k+1]) * area_z
 
                 p_coefficient[i,j,k,mesh_coefficient.AP_ID.value] = a_p
                 p_coefficient[i,j,k,mesh_coefficient.AE_ID.value] = -a_e
-                p_coefficient[i,j,k,mesh_coefficient.AW_ID.value] = -a_e
+                p_coefficient[i,j,k,mesh_coefficient.AW_ID.value] = -a_w
                 p_coefficient[i,j,k,mesh_coefficient.AN_ID.value] = -a_n
                 p_coefficient[i,j,k,mesh_coefficient.AS_ID.value] = -a_s
                 if dim == 3:
@@ -1127,6 +1137,7 @@ def correct_velocity(dim,pp_outlet,dx,dy,dz,n_x_cell,n_y_cell,n_z_cell,\
     '''修正速度'''
     area_x,area_y,area_z,vol = calculate_area_volume(dx,dy,dz)
     
+    # x面
     for k in range(n_z_cell):
         for j in range(n_y_cell):
             for i in range(n_x_cell):
@@ -1237,17 +1248,17 @@ def correct_velocity(dim,pp_outlet,dx,dy,dz,n_x_cell,n_y_cell,n_z_cell,\
                     w[i,j,k] += d * (pl - pr)
     for k in range(n_z_cell):
         for j in range(n_y_cell):
-            for i in range(n_x_cell):
+            for i in range(1,n_x_cell):
                 d = area_x * 0.5 * (1.0 / u_coefficient[i-1,j,k,mesh_coefficient.AP_ID.value] + 1.0 / u_coefficient[i,j,k,mesh_coefficient.AP_ID.value])
                 uf[i,j,k] += d * (pp[i-1,j,k] - pp[i,j,k])
     for k in range(n_z_cell):
-        for j in range(n_y_cell):
+        for j in range(1,n_y_cell):
             for i in range(n_x_cell):
                 d = area_y * 0.5 * (1.0 / v_coefficient[i,j-1,k,mesh_coefficient.AP_ID.value] + 1.0 / u_coefficient[i,j,k,mesh_coefficient.AP_ID.value])
                 vf[i,j,k] += d * (pp[i,j-1,k] - pp[i,j,k])
 
     if dim == 3:
-        for k in range(n_z_cell):
+        for k in range(1,n_z_cell):
             for j in range(n_y_cell):
                 for i in range(n_x_cell):
                     d = area_z * 0.5 * (1.0 / w_coefficient[i,j,k-1,mesh_coefficient.AP_ID.value] + 1.0 / u_coefficient[i,j,k,mesh_coefficient.AP_ID.value])

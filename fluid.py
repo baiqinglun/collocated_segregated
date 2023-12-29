@@ -22,7 +22,7 @@ class Fluid:
 
         self.density = np.ones((self.n_x_cell,self.n_y_cell,self.n_z_cell),dtype=Fp)
         self.mu = np.ones((self.n_x_cell, self.n_y_cell, self.n_z_cell), dtype=Fp)
-        self.conductivity_coefficient = np.zeros((self.n_x_cell,self.n_y_cell,self.n_z_cell),dtype=Fp)
+        self.conductivity_coefficient = Fp(0.0)
         self.specific_heat_capacity = Fp(0.0)
 
         self.source_term = Fp(0.0)
@@ -41,10 +41,10 @@ class Fluid:
 
     def set_conductivity_coefficient(self,conductivity_coefficient):
         '''设置热传导系数'''
-        self.conductivity_coefficient = conductivity_coefficient * np.ones((self.n_x_cell,self.n_y_cell,self.n_z_cell),dtype=Fp)
+        self.conductivity_coefficient = conductivity_coefficient
 
     def set_physical_property(self,density,mu,specific_heat_capacity,conductivity_coefficient):
-        '''设置所有属性'''
+        '''设置所有属性:密度、粘度、比热、导热率'''
         self.set_density(density)
         self.set_mu(mu)
         self.set_specific_heat_capacity(specific_heat_capacity)

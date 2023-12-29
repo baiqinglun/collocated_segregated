@@ -30,81 +30,79 @@ def eqn_scalar_norm2(solve: SolveManager, dim, it_nl, ncx, ncy, ncz, old, now, v
     return (l2_u, l2_max_u)
 
 def eqn_scalar_norm2_p(solve:SolveManager, dim, it_nl, ncx, ncy, ncz, p_coefficient, mesh_coefficient,var):
-    
-    # define local variables related to the case object
+    l2_u = Fp(0.0)
+    l2_max_u = Fp(0.0)
     if var == "p_coefficient":
         l2_u = solve.l2_pp
         l2_max_u = solve.l2_max_pp
 
-    # Compute the L2 norm
     l2_u = np.sqrt(np.mean((p_coefficient[:,:,:,mesh_coefficient.ABRC_ID.value]*p_coefficient[:,:,:,mesh_coefficient.ABRC_ID.value])**2))
 
-    # Compute the maximum L2 norm observed so far
     l2_max_u = max(l2_u, l2_max_u)
 
     return (l2_u, l2_max_u)
 
-def scalar_Pj(dim,solve:SolveManager,post:PostProcessManager,current_iter, relax_factor, ncx, ncy, ncz,\
-               t_coefficient,t, init_zero,mesh_coefficient,residual_error):
-    '''高斯求解'''
-    solve_equation_step_count = solve.solve_equation_step_count
+def scalar_Pj(dim,solve:SolveManager,post:PostProcessManager,current_iter,iter_step_count, relax_factor, ncx, ncy, ncz,\
+               coefficient,value,init_zero,mesh_coefficient,residual_error):
+    '''Pj求解'''
     save_residual_frequency = post.save_residual_frequency
     linear_equation_residual_filename = post.linear_equation_residual_filename
-    iter_step_count = solve.iter_step_count
     output_folder = post.output_folder
+    n_iter_step_count = solve.iter_step_count
 
-    initial_norm = 0.0
+    initial_norm = Fp(0.0)
     if init_zero:
-        t.fill(Fp(0.0))
+        value.fill(Fp(0.0))
+    old_value = np.zeros((ncx, ncy, ncz), dtype=Fp)
 
-    t_old = np.zeros((ncx, ncy, ncz), dtype=Fp)
-    for equation_current_iter in range(1, solve_equation_step_count + 1):
-        t_old = t.copy()
-        norm2 = 0.0
+    for equation_current_iter in range(1, iter_step_count + 1):
+        old_value = value.copy()
+        norm2 = Fp(0.0)
         for k in range(ncz):
             for j in range(ncy):
                 for i in range(ncx):
                     if i == 0:
                         tw = 0.0
                     else:
-                        tw = t_old[i - 1, j, k]
-                    if i == ncx - 1:
+                        tw = old_value[i-1,j,k]
+                    if i == ncx-1:
                         te = 0.0
                     else:
-                        te = t_old[i + 1, j, k]
-
+                        te = old_value[i+1,j,k]
+                    
                     if j == 0:
                         ts = 0.0
                     else:
-                        ts = t_old[i, j - 1, k]
-                    if j == ncy - 1:
+                        ts = old_value[i,j-1,k]
+                    if j == ncy-1:
                         tn = 0.0
                     else:
-                        tn = t_old[i, j + 1, k]
-
+                        tn = old_value[i,j+1,k]
+                    
                     if dim == 3:
                         if k == 0:
                             tb = 0.0
                         else:
-                            tb = t_old[i, j, k - 1]
-                        if k == ncz - 1:
+                            tb = old_value[i,j,k-1]
+                        if k == ncz-1:
                             tt = 0.0
                         else:
-                            tt = t_old[i, j, k + 1]
-                    # t_new = (...)为定义t_new的值，赋值给等号右侧表达式的结果，一个值
-                    t_new = (\
-                                - t_coefficient[i, j, k, mesh_coefficient.AE_ID.value] * te\
-                                - t_coefficient[i, j, k, mesh_coefficient.AW_ID.value] * tw\
-                                - t_coefficient[i, j, k, mesh_coefficient.AN_ID.value] * tn\
-                                - t_coefficient[i, j, k, mesh_coefficient.AS_ID.value] * ts\
-                                + t_coefficient[i, j, k, mesh_coefficient.ABRC_ID.value] \
-                        )
-                    if dim == 3:
-                        t_new = t_new - t_coefficient[i, j, k, mesh_coefficient.AT_ID.value] * tt - t_coefficient[i, j, k, mesh_coefficient.AB_ID.value] * tb
-                    t_new = t_new / t_coefficient[i, j, k, mesh_coefficient.AP_ID.value]
-                    du = relax_factor * (t_new - t_old[i, j, k])
-                    t[i, j, k] = t_old[i, j, k] + du
-                    norm2 = norm2 + du * du
+                            tt = old_value[i,j,k+1]
+                    t_new = (                 \
+                        - coefficient[i,j,k,mesh_coefficient.AE_ID.value]*te  \
+                        - coefficient[i,j,k,mesh_coefficient.AW_ID.value]*tw  \
+                        - coefficient[i,j,k,mesh_coefficient.AN_ID.value]*tn  \
+                        - coefficient[i,j,k,mesh_coefficient.AS_ID.value]*ts  \
+                        + coefficient[i,j,k,mesh_coefficient.ABRC_ID.value]   \
+                            )
+                    if dim==3:
+                        t_new = t_new - coefficient[i,j,k,mesh_coefficient.AT_ID]*tt - coefficient[i,j,k,mesh_coefficient.AB_ID.value]*tb
+
+                    t_new = t_new / coefficient[i,j,k,mesh_coefficient.AP_ID.value]
+
+                    du = relax_factor * (t_new - old_value[i,j,k])
+                    value[i,j,k] = old_value[i,j,k] + du
+                    norm2 = norm2 + du*du
 
         cell_count = ncx * ncy * ncz
         norm2 = np.sqrt(norm2 / Fp(cell_count))
@@ -115,9 +113,9 @@ def scalar_Pj(dim,solve:SolveManager,post:PostProcessManager,current_iter, relax
         max_norm = max(norm2, max_norm) + 1.e-20
         rel_norm = norm2 / max_norm
 
-        if rel_norm < residual_error or equation_current_iter == solve_equation_step_count:
+        if rel_norm < residual_error or equation_current_iter == iter_step_count:
             solve.solve_equation_total_count = solve.solve_equation_total_count + equation_current_iter
-            if current_iter % save_residual_frequency == 0 or current_iter == 1 or current_iter == iter_step_count:
+            if current_iter % save_residual_frequency == 0 or current_iter == 1 or current_iter == n_iter_step_count:
                 print('current_iter, equation_current_iter, total_linsol_iters, norm2, initial_norm, max_norm, rel_norm ', current_iter, equation_current_iter, solve.solve_equation_total_count, norm2,
                       initial_norm, max_norm, rel_norm)
 

@@ -5,17 +5,16 @@ class FaceId2D(Enum):
     '''面的索引(2D)'''
     EAST = 0
     WEST = 1
-    SOUTH = 2
-    NORTH = 3
+    NORTH = 2
+    SOUTH = 3
     COUNT = 4
-
 
 class FaceId3D(Enum):
     '''面的索引(3D)'''
     EAST = 0
     WEST = 1
-    SOUTH = 2
-    NORTH = 3
+    NORTH = 2
+    SOUTH = 3
     TOP = 4
     BOTTOM = 5
     COUNT = 6
