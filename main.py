@@ -31,7 +31,7 @@ if __name__ == '__main__':
 
     if not is_test:
         # 网格划分
-        meshManager = MeshManager(2, 32, 64, 1)
+        meshManager = MeshManager(2, 20, 20, 1)
         meshManager.create_coordinates(coordinate_limit_count)
 
         # 存储数据
@@ -52,7 +52,7 @@ if __name__ == '__main__':
 
         # 求解
         solveManager = SolveManager()
-        solveManager.set_dt(Fp(1.e16))
+        solveManager.set_dt(Fp(0.01))
         solveManager.set_iter_step_count(100,200,10,5,5,5) # 总迭代步数
         solveManager.set_solve_equation_step_count(solve_equation_step_count) # 求解方程的迭代步数
         solveManager.set_relax_factor(Fp(0.25),Fp(0.75),Fp(0.75),Fp(0.75),Fp(0.75)) # 设置松弛因子
@@ -64,10 +64,10 @@ if __name__ == '__main__':
         solveManager.set_equation_type(EquationType.DIFFUSION_CONVECTION)
 
         fluidBoundary.create_boundary_temperature(dim,
-                                                      'constant',  Fp(300.0),
-                                                      'heat_flux',  Fp(0.0),
-                                                      'constant', Fp(1000.0),
-                                                      'heat_flux', Fp(0.0))
+                                                      'constant',  Fp(288.0),
+                                                      'constant',  Fp(288.0),
+                                                      'constant',  Fp(288.0),
+                                                      'constant',  Fp(288.0))
         
         # if solveManager.equation_type == EquationType.CONVECTION:
         #     fluidBoundary.create_boundary_temperature(dim,
@@ -89,10 +89,10 @@ if __name__ == '__main__':
         #                                              'constant', Fp(0.0),  # ymin
         #                                              'constant', Fp(1.0))  # ymax
         fluidBoundary.create_boundary_velocity(dim,\
-                                ['constant','constant','flux'], [Fp(1.0), Fp(0.0), Fp(0.0)],  # xmin
-                                ['None','None','None'], [Fp(0.0), Fp(0.0), Fp(0.0)],  # xmax
+                                ['constant','constant','flux'], [Fp(0.0), Fp(0.0), Fp(0.0)],  # xmin
+                                ['constant','constant','flux'], [Fp(0.0), Fp(0.0), Fp(0.0)],  # xmax
                                 ['constant','constant','flux'], [Fp(0.0), Fp(0.0), Fp(0.0)], # ymin
-                                ['constant','constant','flux'], [Fp(0.0), Fp(0.0),  Fp(0.0)]) # ymax
+                                ['constant','constant','flux'], [Fp(10.0), Fp(0.0),  Fp(0.0)]) # ymax
         # 后处理
         postProcessManager = PostProcessManager(output_folder)
         postProcessManager.set_frequency(1, 1)
